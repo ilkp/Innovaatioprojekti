@@ -5,16 +5,6 @@ using System.Collections.Generic;
 
 public class CollisionUITool : EditorWindow
 {
-	private class FoldoutContent
-	{
-		public GameObject go = null;
-		public bool isOpen = false;
-		public bool collisionEnabled = true;
-		public bool soundEnabled = true;
-		public bool visualizationEnabled = true;
-		public List<FoldoutContent> next = new List<FoldoutContent>();
-	}
-
 	private struct RowContent
 	{
 		public GameObject go;
@@ -40,12 +30,9 @@ public class CollisionUITool : EditorWindow
 		GUILayout.Width(200)
 	};
 
-	private bool contentIsDirty = true;
 	private GameObject[] rootGameObjects;
 	private int selectedRootObject = 0;
-	private FoldoutContent gameObjectFoldoutTree = new FoldoutContent();
 	private Dictionary<int, RowContent[]> rowContents = new Dictionary<int, RowContent[]>();
-	//private RowContent[] rowContents;
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
@@ -56,7 +43,18 @@ public class CollisionUITool : EditorWindow
 
 	private void Awake()
 	{
-		//Selection.selectionChanged += FocusOnSelected;
+		rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
+		for (int i = 0; i < rootGameObjects.Length; ++i)
+		{
+			int id = rootGameObjects[i].GetInstanceID();
+			List<GameObject> gameObjectInRoot = new List<GameObject>(GetChildren(rootGameObjects[i]));
+			gameObjectInRoot.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
+			rowContents.Add(id, new RowContent[gameObjectInRoot.Count]);
+			for (int j = 0; j < gameObjectInRoot.Count; ++j)
+			{
+				rowContents[id][j] = new RowContent(gameObjectInRoot[j]);
+			}
+		}
 	}
 
 	private void OnDestroy()
@@ -66,11 +64,8 @@ public class CollisionUITool : EditorWindow
 
 	private void OnGUI()
 	{
-		rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
-
 		EditorGUILayout.BeginVertical();
 		EditorGUILayout.BeginHorizontal();
-
 		EditorGUILayout.LabelField("Root",
 			new GUILayoutOption[]
 			{
@@ -78,41 +73,12 @@ public class CollisionUITool : EditorWindow
 			});
 
 		// Create a popup selector for the root object
-		EditorGUI.BeginChangeCheck();
 		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, GameObjectNames(rootGameObjects),
 			new GUILayoutOption[]
 			{
 				GUILayout.ExpandWidth(false),
 				GUILayout.MinWidth(80)
 			});
-		if (EditorGUI.EndChangeCheck())
-		{
-			contentIsDirty = true;
-		}
-
-		// If the root object changes, recreate the the foldout data
-		if (contentIsDirty)
-		{
-			int id = rootGameObjects[selectedRootObject].GetInstanceID();
-			if (!rowContents.ContainsKey(id))
-			{
-				List<GameObject> objectsInSelected = new List<GameObject>(GetChildren(rootGameObjects[selectedRootObject]));
-				objectsInSelected.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
-				rowContents.Add(id, new RowContent[objectsInSelected.Count]);
-				for (int i = 0; i < objectsInSelected.Count; ++i)
-				{
-					rowContents[id][i] = new RowContent(objectsInSelected[i]);
-				}
-			}
-
-			//gameObjectFoldoutTree.next = new List<FoldoutContent>();
-			//foreach (GameObject child in objectsInSelected)
-			//{
-			//	CreateFoldoutContentTree(gameObjectFoldoutTree, child);
-			//}
-			contentIsDirty = false;
-		}
-
 		EditorGUILayout.EndHorizontal();
 
 		EditorGUILayout.Space();
@@ -124,6 +90,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.LabelField("Visualization", toggleOptions);
 		EditorGUILayout.EndHorizontal();
 
+		// Create toggle content based on selected root object
 		int rootObjectId = rootGameObjects[selectedRootObject].GetInstanceID();
 		for (int i = 0; i < rowContents[rootObjectId].Length; ++i)
 		{
@@ -137,12 +104,6 @@ public class CollisionUITool : EditorWindow
 
 			EditorGUILayout.EndHorizontal();
 		}
-
-		// Update game object foldout contents
-		//foreach(FoldoutContent foldoutContent in gameObjectFoldoutTree.next)
-		//{
-		//	CreateFoldout(foldoutContent, 0);
-		//}
 
 		EditorGUILayout.EndVertical();
 	}
@@ -165,41 +126,6 @@ public class CollisionUITool : EditorWindow
 			names[i] = gos[i].name;
 		}
 		return names;
-	}
-
-	private void CreateFoldoutContentTree(FoldoutContent parent, GameObject go)
-	{
-		FoldoutContent content = new FoldoutContent();
-		content.go = go;
-		content.next = new List<FoldoutContent>();
-		parent.next.Add(content);
-		if (go.GetComponent<MeveaObject>() == null)
-		{
-			foreach (GameObject child in GetChildren(go))
-			{
-				CreateFoldoutContentTree(content, child);
-			}
-		}
-	}
-
-	private void CreateFoldout(FoldoutContent foldoutContent, int depth)
-	{
-		EditorGUILayout.BeginHorizontal();
-		EditorGUI.indentLevel = depth;
-		GUI.SetNextControlName(foldoutContent.go.name);
-		foldoutContent.isOpen = EditorGUILayout.Foldout(foldoutContent.isOpen, foldoutContent.go.name, true);
-		EditorGUI.indentLevel = 0;
-		foldoutContent.collisionEnabled = EditorGUILayout.Toggle(foldoutContent.collisionEnabled, toggleOptions);
-		foldoutContent.soundEnabled = EditorGUILayout.Toggle(foldoutContent.soundEnabled, toggleOptions);
-		foldoutContent.visualizationEnabled = EditorGUILayout.Toggle(foldoutContent.visualizationEnabled, toggleOptions);
-		EditorGUILayout.EndHorizontal();
-		if (foldoutContent.isOpen)
-		{
-			foreach (FoldoutContent next in foldoutContent.next)
-			{
-				CreateFoldout(next, depth + 1);
-			}
-		}
 	}
 
 	//private void FocusOnSelected()
