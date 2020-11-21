@@ -17,7 +17,12 @@ public class TestCollisionVisuals : CollisionTool
     void OnCollisionEvent(object sender, CollisionEventArgs e)
     {
         //Debug.Log(sender + ": " + e.MyName + " & " + e.OtherName);
-
+        int idFirst = e.MyCollider.gameObject.GetInstanceID();
+        int idSecond = e.OtherCollider.gameObject.GetInstanceID();
+        if (!CollisionVisuals.Instance.visualsEnabled.ContainsKey(idFirst) || !CollisionVisuals.Instance.visualsEnabled[idFirst])
+            return;
+        if (!CollisionVisuals.Instance.visualsEnabled.ContainsKey(idSecond) || !CollisionVisuals.Instance.visualsEnabled[idSecond])
+            return;
         StartCoroutine(VisulizeCollision(e));
     }
 

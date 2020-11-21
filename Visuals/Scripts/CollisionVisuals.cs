@@ -6,8 +6,25 @@ using UnityEngine;
 public class CollisionVisuals : Singleton<CollisionVisuals>
 {
     public Material highlightMaterial;
+    public Dictionary<int, bool> visualsEnabled;
 
-    struct Visual
+	private void Start()
+	{
+        visualsEnabled = new Dictionary<int, bool>();
+
+        GameObject assetRoot = GameObject.FindGameObjectWithTag("AssetRoot");
+        for (int i = 0; i < assetRoot.transform.childCount; ++i)
+        {
+            Transform asset = assetRoot.transform.GetChild(i);
+            if (asset.GetComponent<CollisionDetector>() == null)
+                continue;
+            for (int j = 0; j < asset.childCount; ++j)
+                if (asset.GetChild(j).GetComponent<MeveaObject>() != null)
+                    visualsEnabled.Add(asset.GetChild(j).gameObject.GetInstanceID(), true);
+        }
+    }
+
+	struct Visual
     {
         public int count;
         public MeshRenderer renderer;

@@ -2,24 +2,10 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System;
 
 public class CollisionUITool : EditorWindow
 {
-	private struct RowContent
-	{
-		public GameObject go;
-		public bool collisionsEnabled;
-		public bool soundsEnabled;
-		public bool visualizationEnabled;
-		public RowContent(GameObject go)
-		{
-			this.go = go;
-			collisionsEnabled = true;
-			soundsEnabled = true;
-			visualizationEnabled = true;
-		}
-	}
-
 	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[]
 	{
 		GUILayout.Width(75)
@@ -30,9 +16,9 @@ public class CollisionUITool : EditorWindow
 		GUILayout.Width(200)
 	};
 
-	private GameObject[] rootGameObjects;
 	private int selectedRootObject = 0;
-	private Dictionary<int, RowContent[]> rowContents = new Dictionary<int, RowContent[]>();
+	private string[] rootObjectNames;
+	private Dictionary<int, Tuple<int, string>[]> toggleObjects = new Dictionary<int, Tuple<int, string>[]>();
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
@@ -43,17 +29,18 @@ public class CollisionUITool : EditorWindow
 
 	private void Awake()
 	{
-		rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
-		for (int i = 0; i < rootGameObjects.Length; ++i)
+		List<GameObject> rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
+		rootGameObjects.RemoveAll(item => item.GetComponent<CollisionDetector>() == null);
+		rootObjectNames = new string[rootGameObjects.Count];
+
+		for (int i = 0; i < rootGameObjects.Count; ++i)
 		{
-			int id = rootGameObjects[i].GetInstanceID();
-			List<GameObject> gameObjectInRoot = new List<GameObject>(GetChildren(rootGameObjects[i]));
-			gameObjectInRoot.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
-			rowContents.Add(id, new RowContent[gameObjectInRoot.Count]);
-			for (int j = 0; j < gameObjectInRoot.Count; ++j)
-			{
-				rowContents[id][j] = new RowContent(gameObjectInRoot[j]);
-			}
+			rootObjectNames[i] = rootGameObjects[i].name;
+			List<GameObject> rootChilds = GetChildren(rootGameObjects[i]);
+			rootChilds.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
+			toggleObjects.Add(i, new Tuple<int, string>[rootChilds.Count]);
+			for (int j = 0; j < rootChilds.Count; ++j)
+				toggleObjects[i][j] = new Tuple<int, string>(rootChilds[j].GetInstanceID(), rootChilds[j].name);
 		}
 	}
 
@@ -73,7 +60,7 @@ public class CollisionUITool : EditorWindow
 			});
 
 		// Create a popup selector for the root object
-		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, GameObjectNames(rootGameObjects),
+		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames,
 			new GUILayoutOption[]
 			{
 				GUILayout.ExpandWidth(false),
@@ -91,16 +78,15 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 
 		// Create toggle content based on selected root object
-		int rootObjectId = rootGameObjects[selectedRootObject].GetInstanceID();
-		for (int i = 0; i < rowContents[rootObjectId].Length; ++i)
+		foreach (Tuple<int, string> toggleObject in toggleObjects[selectedRootObject])
 		{
 			EditorGUILayout.BeginHorizontal();
 
-			ref RowContent contents = ref rowContents[rootObjectId][i];
-			EditorGUILayout.LabelField(contents.go.name, labelOptions);
-			contents.collisionsEnabled = EditorGUILayout.Toggle(contents.collisionsEnabled, toggleOptions);
-			contents.soundsEnabled = EditorGUILayout.Toggle(contents.soundsEnabled, toggleOptions);
-			contents.visualizationEnabled = EditorGUILayout.Toggle(contents.visualizationEnabled, toggleOptions);
+			EditorGUILayout.LabelField(toggleObject.Item2, labelOptions);
+			CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1]
+				= EditorGUILayout.Toggle(CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1], toggleOptions);
+			//contents.soundsEnabled = EditorGUILayout.Toggle(contents.soundsEnabled, toggleOptions);
+			//contents.visualizationEnabled = EditorGUILayout.Toggle(contents.visualizationEnabled, toggleOptions);
 
 			EditorGUILayout.EndHorizontal();
 		}
@@ -108,14 +94,14 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndVertical();
 	}
 
-	private GameObject[] GetChildren(GameObject go)
+	private List<GameObject> GetChildren(GameObject go)
 	{
 		List<GameObject> children = new List<GameObject>();
 		for (int i = 0; i < go.transform.childCount; ++i)
 		{
 			children.Add(go.transform.GetChild(i).gameObject);
 		}
-		return children.ToArray();
+		return children;
 	}
 
 	private string[] GameObjectNames(GameObject[] gos)
