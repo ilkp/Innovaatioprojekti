@@ -35,7 +35,8 @@ public class CollisionUITool : EditorWindow
 	private string[] rootObjectNames;
 	private Dictionary<int, Tuple<int, string>[]> toggleObjects = new Dictionary<int, Tuple<int, string>[]>();
 	private bool inPlayMode = false;
-	private Vector2 toggleScrollView;
+	private Vector2 horizontalScollView;
+	private Vector2 verticalScrollView;
 
 	private bool SPACEHOLDER_collision = true;
 	private bool SPACEHOLDER_sound = true;
@@ -69,25 +70,53 @@ public class CollisionUITool : EditorWindow
 			inPlayMode = true;
 		}
 
-		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("Root",
-			new GUILayoutOption[]
+		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
+		{
+			// Create label and popup selector for root object
+			EditorGUILayout.BeginHorizontal();
 			{
-				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)
-			});
+				EditorGUILayout.LabelField("Root",
+					new GUILayoutOption[]
+					{
+						GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)
+					});
 
-		// Create a popup selector for the root objects
-		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames,
-			new GUILayoutOption[]
+				selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames,
+					new GUILayoutOption[]
+					{
+						GUILayout.ExpandWidth(false),
+						GUILayout.MinWidth(80)
+					});
+			}
+			EditorGUILayout.EndHorizontal();
+
+			// Create toggle header and buttons
+			GUILayout.Space(SPACE);
+			createHead();
+			createToggleAllButtons();
+			GUILayout.Space(SPACE);
+
+			// Create toggle content based on selected root object
+			verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 			{
-				GUILayout.ExpandWidth(false),
-				GUILayout.MinWidth(80)
-			});
+				foreach (Tuple<int, string> toggleObject in toggleObjects[selectedRootObject])
+					createToggleRow(toggleObject);
+			}
+			EditorGUILayout.EndScrollView();
+		}
+		EditorGUILayout.EndScrollView();
 
-		EditorGUILayout.EndHorizontal();
+		if (executeFocus && !focusing)
+		{
+			focusing = true;
+			executeFocus = false;
+			EditorApplication.ExecuteMenuItem("Edit/Frame Selected");
+			focusing = false;
+		}
+	}
 
-		GUILayout.Space(SPACE);
-
+	private void createHead()
+	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", componentOptions);
 		GUILayout.Space(SPACE);
@@ -95,8 +124,10 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.LabelField("Sounds", toggleOptions);
 		EditorGUILayout.LabelField("Visualization", toggleOptions);
 		EditorGUILayout.EndHorizontal();
-			
-		// Create toggle all/none buttons
+	}
+
+	private void createToggleAllButtons()
+	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", componentOptions);
 		GUILayout.Space(SPACE);
@@ -109,42 +140,26 @@ public class CollisionUITool : EditorWindow
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAllVisuals(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAllVisuals(false);
 		EditorGUILayout.EndHorizontal();
+	}
 
-		GUILayout.Space(SPACE);
-
-		toggleScrollView = EditorGUILayout.BeginScrollView(toggleScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
-		// Create toggle content based on selected root object
-		foreach (Tuple<int, string> toggleObject in toggleObjects[selectedRootObject])
+	private void createToggleRow(Tuple<int, string> toggleObject)
+	{
+		EditorGUILayout.BeginHorizontal();
+		if (GUILayout.Button(toggleObject.Item2, componentOptions))
 		{
-			EditorGUILayout.BeginHorizontal();
-
-			if (GUILayout.Button(toggleObject.Item2, componentOptions))
+			Selection.activeGameObject = (GameObject)EditorUtility.InstanceIDToObject(toggleObject.Item1);
+			if (!focusing && Time.time - clickTime < DOUBLE_CLICK_TIME)
 			{
-				Selection.activeGameObject = (GameObject)EditorUtility.InstanceIDToObject(toggleObject.Item1);
-				if (!focusing && Time.time - clickTime < DOUBLE_CLICK_TIME)
-				{
-					executeFocus = true;
-				}
-				clickTime = Time.time;
+				executeFocus = true;
 			}
-			GUILayout.Space(SPACE);
-			SPACEHOLDER_sound = EditorGUILayout.Toggle(SPACEHOLDER_sound, toggleOptions);
-			SPACEHOLDER_collision = EditorGUILayout.Toggle(SPACEHOLDER_collision, toggleOptions);
-			CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1]
-				= EditorGUILayout.Toggle(CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1], toggleOptions);
-
-			EditorGUILayout.EndHorizontal();
+			clickTime = Time.time;
 		}
-
-		EditorGUILayout.EndScrollView();
-
-		if (executeFocus && !focusing)
-		{
-			focusing = true;
-			executeFocus = false;
-			EditorApplication.ExecuteMenuItem("Edit/Frame Selected");
-			focusing = false;
-		}
+		GUILayout.Space(SPACE);
+		SPACEHOLDER_sound = EditorGUILayout.Toggle(SPACEHOLDER_sound, toggleOptions);
+		SPACEHOLDER_collision = EditorGUILayout.Toggle(SPACEHOLDER_collision, toggleOptions);
+		CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1]
+			= EditorGUILayout.Toggle(CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1], toggleOptions);
+		EditorGUILayout.EndHorizontal();
 	}
 
 	private List<GameObject> GetChildren(GameObject go)
