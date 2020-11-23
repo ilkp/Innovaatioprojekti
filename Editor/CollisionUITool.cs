@@ -33,7 +33,7 @@ public class CollisionUITool : EditorWindow
 	private bool visualsManagerInitialized = false;
 
 	private bool inPlayMode = false;
-	private float clickTime = 0f;
+	private double clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
 	private int selectedRootObject = 0;
@@ -105,7 +105,7 @@ public class CollisionUITool : EditorWindow
 			verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 			{
 				foreach (Tuple<int, string> toggleObject in toggleObjects[selectedRootObject])
-					CreateToggleRow(toggleObject);
+					CreateRow(toggleObject);
 			}
 			EditorGUILayout.EndScrollView();
 		}
@@ -155,17 +155,17 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateToggleRow(Tuple<int, string> toggleObject)
+	private void CreateRow(Tuple<int, string> toggleObject)
 	{
 		EditorGUILayout.BeginHorizontal();
 		if (GUILayout.Button(toggleObject.Item2, componentOptions))
 		{
 			Selection.activeGameObject = (GameObject)EditorUtility.InstanceIDToObject(toggleObject.Item1);
-			if (!focusing && Time.time - clickTime < DOUBLE_CLICK_TIME)
+			if (!focusing && EditorApplication.timeSinceStartup - clickTime < DOUBLE_CLICK_TIME)
 			{
 				executeFocus = true;
 			}
-			clickTime = Time.time;
+			clickTime = EditorApplication.timeSinceStartup;
 		}
 		GUILayout.Space(SPACE);
 
@@ -204,16 +204,6 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private List<GameObject> GetChildren(GameObject go)
-	{
-		List<GameObject> children = new List<GameObject>();
-		for (int i = 0; i < go.transform.childCount; ++i)
-		{
-			children.Add(go.transform.GetChild(i).gameObject);
-		}
-		return children;
-	}
-
 	private void CreateToggleContent()
 	{
 		List<GameObject> rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
@@ -238,5 +228,15 @@ public class CollisionUITool : EditorWindow
 		{
 			CollisionVisuals.Instance.visualsEnabled[toggleObjects[selectedRootObject][i].Item1] = value;
 		}
+	}
+
+	private List<GameObject> GetChildren(GameObject go)
+	{
+		List<GameObject> children = new List<GameObject>();
+		for (int i = 0; i < go.transform.childCount; ++i)
+		{
+			children.Add(go.transform.GetChild(i).gameObject);
+		}
+		return children;
 	}
 }
