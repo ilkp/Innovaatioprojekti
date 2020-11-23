@@ -28,18 +28,20 @@ public class CollisionUITool : EditorWindow
 		GUILayout.Width(TOGGLE_ALL_WIDTH)
 	};
 
+	private bool collisionManagerInitialized = false;
+	private bool soundsManagerInitialized = false;
+	private bool visualsManagerInitialized = false;
+
+	private bool inPlayMode = false;
 	private float clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
 	private int selectedRootObject = 0;
 	private string[] rootObjectNames;
 	private Dictionary<int, Tuple<int, string>[]> toggleObjects = new Dictionary<int, Tuple<int, string>[]>();
-	private bool inPlayMode = false;
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
-
-	private bool SPACEHOLDER_collision = true;
-	private bool SPACEHOLDER_sound = true;
+	private bool dummyToggle = false;
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
@@ -50,24 +52,27 @@ public class CollisionUITool : EditorWindow
 
 	private void Awake()
 	{
-	}
-
-	private void OnDestroy()
-	{
-		//Selection.selectionChanged -= FocusOnSelected;
+		CreateToggleContent();
 	}
 
 	private void OnGUI()
 	{
-		if (!Application.isPlaying)
+		if (Application.isPlaying)
+		{
+			if (!inPlayMode)
+			{
+				CreateToggleContent();
+				if (CollisionVisuals.Instance.visualsEnabled != null)
+					visualsManagerInitialized = true;
+			}
+			inPlayMode = true;
+		}
+		else
 		{
 			inPlayMode = false;
-			return;
-		}
-		else if (!inPlayMode)
-		{
-			CreateToggleContent();
-			inPlayMode = true;
+			collisionManagerInitialized = false;
+			soundsManagerInitialized = false;
+			visualsManagerInitialized = false;
 		}
 
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
@@ -92,15 +97,15 @@ public class CollisionUITool : EditorWindow
 
 			// Create toggle header and buttons
 			GUILayout.Space(SPACE);
-			createHead();
-			createToggleAllButtons();
+			CreateHead();
+			CreateToggleAllButtons();
 			GUILayout.Space(SPACE);
 
 			// Create toggle content based on selected root object
 			verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 			{
 				foreach (Tuple<int, string> toggleObject in toggleObjects[selectedRootObject])
-					createToggleRow(toggleObject);
+					CreateToggleRow(toggleObject);
 			}
 			EditorGUILayout.EndScrollView();
 		}
@@ -115,7 +120,7 @@ public class CollisionUITool : EditorWindow
 		}
 	}
 
-	private void createHead()
+	private void CreateHead()
 	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", componentOptions);
@@ -126,23 +131,31 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void createToggleAllButtons()
+	private void CreateToggleAllButtons()
 	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", componentOptions);
+
 		GUILayout.Space(SPACE);
+		GUI.enabled = collisionManagerInitialized;
 		if (GUILayout.Button("all", toggleAllOptions)) { }
 		if (GUILayout.Button("none", toggleAllOptions)) { }
+
 		GUILayout.Space(TOGGLE_ALL_SPACE);
+		GUI.enabled = soundsManagerInitialized;
 		if (GUILayout.Button("all", toggleAllOptions)) { }
 		if (GUILayout.Button("none", toggleAllOptions)) { }
+
 		GUILayout.Space(TOGGLE_ALL_SPACE);
+		GUI.enabled = visualsManagerInitialized;
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAllVisuals(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAllVisuals(false);
+
+		GUI.enabled = true;
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void createToggleRow(Tuple<int, string> toggleObject)
+	private void CreateToggleRow(Tuple<int, string> toggleObject)
 	{
 		EditorGUILayout.BeginHorizontal();
 		if (GUILayout.Button(toggleObject.Item2, componentOptions))
@@ -155,10 +168,39 @@ public class CollisionUITool : EditorWindow
 			clickTime = Time.time;
 		}
 		GUILayout.Space(SPACE);
-		SPACEHOLDER_sound = EditorGUILayout.Toggle(SPACEHOLDER_sound, toggleOptions);
-		SPACEHOLDER_collision = EditorGUILayout.Toggle(SPACEHOLDER_collision, toggleOptions);
-		CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1]
-			= EditorGUILayout.Toggle(CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1], toggleOptions);
+
+		GUI.enabled = collisionManagerInitialized;
+		if (!collisionManagerInitialized)
+		{
+			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+		}
+		else
+		{
+			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+		}
+
+		GUI.enabled = soundsManagerInitialized;
+		if (!soundsManagerInitialized)
+		{
+			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+		}
+		else
+		{
+			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+		}
+
+		GUI.enabled = visualsManagerInitialized;
+		if (!visualsManagerInitialized)
+		{
+			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+		}
+		else
+		{
+			CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1]
+				= EditorGUILayout.Toggle(CollisionVisuals.Instance.visualsEnabled[toggleObject.Item1], toggleOptions);
+		}
+
+		GUI.enabled = true;
 		EditorGUILayout.EndHorizontal();
 	}
 
@@ -172,21 +214,12 @@ public class CollisionUITool : EditorWindow
 		return children;
 	}
 
-	private string[] GameObjectNames(GameObject[] gos)
-	{
-		string[] names = new string[gos.Length];
-		for (int i = 0; i < gos.Length; ++i)
-		{
-			names[i] = gos[i].name;
-		}
-		return names;
-	}
-
 	private void CreateToggleContent()
 	{
 		List<GameObject> rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
 		rootGameObjects.RemoveAll(item => item.GetComponent<CollisionDetector>() == null);
 		rootObjectNames = new string[rootGameObjects.Count];
+		toggleObjects = new Dictionary<int, Tuple<int, string>[]>();
 
 		for (int i = 0; i < rootGameObjects.Count; ++i)
 		{
@@ -206,35 +239,4 @@ public class CollisionUITool : EditorWindow
 			CollisionVisuals.Instance.visualsEnabled[toggleObjects[selectedRootObject][i].Item1] = value;
 		}
 	}
-
-	//private void FocusOnSelected()
-	//{
-	//	Transform[] selected = Selection.transforms;
-	//	if (selected.Length == 0)
-	//	{
-	//		return;
-	//	}
-	//	FoldoutContent selectedFoldout = FindFromFoldoutTree(selected[0].gameObject.GetInstanceID(), gameObjectFoldoutTree);
-	//	if (selectedFoldout != null)
-	//	{
-	//		GUI.FocusControl(selectedFoldout.go.name);
-	//	}
-	//}
-
-	//private FoldoutContent FindFromFoldoutTree(int id, FoldoutContent foldoutContent)
-	//{
-	//	if (foldoutContent.go != null && foldoutContent.go.GetInstanceID() == id)
-	//	{
-	//		return foldoutContent;
-	//	}
-	//	foreach (FoldoutContent next in foldoutContent.next)
-	//	{
-	//		FoldoutContent result = FindFromFoldoutTree(id, next);
-	//		if (result != null && result.go.GetInstanceID() == id)
-	//		{
-	//			return result;
-	//		}
-	//	}
-	//	return null;
-	//}
 }
