@@ -16,7 +16,7 @@ public class Visuals : CollisionTool
     
     void OnCollisionEvent(object sender, CollisionEventArgs e)
     {
-        if (enabled && (e.IsUniqueDetection || e.OtherCollider.GetComponent<Visuals>().enabled))
+        if (enabled && (e.IsUniqueDetection || e.OtherCollider.GetComponentInParent<Visuals>().enabled))
         {
             StartCoroutine(VisulizeCollision(e.MyCollider));
             if (e.IsUniqueDetection)
@@ -51,7 +51,7 @@ public class Visuals : CollisionTool
                     Gizmos.DrawMesh(c.sharedMesh);
                     break;
                 default:
-                    Debug.LogWarning("Visuals for \"" + col.GetType().ToString() + "\" have not been implemented yet.");
+                    Debug.LogWarning("Visuals for \"" + col.GetType().ToString() + "\" have not been implemented.");
                     break;
             }
         }
