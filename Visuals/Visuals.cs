@@ -6,7 +6,11 @@ public class Visuals : CollisionTool
 {
     public float delay = .5f;
     public Color color = new Color(1, 0, 0, 0.5f);
-    readonly List<Collider> colliders = new List<Collider>();
+
+    public enum VisualStyle { PerCollider, Compound, Mesh };
+    public VisualStyle visualStyle;
+
+    readonly List<CollisionEventArgs> collisionEvents = new List<CollisionEventArgs>();
 
     private void Start()
     {
@@ -18,24 +22,22 @@ public class Visuals : CollisionTool
     {
         if (enabled && (e.IsUniqueDetection || e.OtherCollider.GetComponentInParent<Visuals>().enabled))
         {
-            StartCoroutine(VisulizeCollision(e.MyCollider));
-            if (e.IsUniqueDetection)
-                StartCoroutine(VisulizeCollision(e.OtherCollider));
+            StartCoroutine(VisulizeCollision(e));
         }
     }
-    
-    IEnumerator VisulizeCollision(Collider col)
+
+    IEnumerator VisulizeCollision(CollisionEventArgs e)
     {
-        colliders.Add(col);
+        collisionEvents.Add(e);
         yield return new WaitForSeconds(delay);
-        colliders.Remove(col);
+        collisionEvents.Remove(e);
     }
 
     private void OnDrawGizmos()
     {
-        Gizmos.color = color;
+        if (Application.isPlaying == false) return;
 
-        foreach (Collider col in colliders)
+        void DrawCollider(Collider col)
         {
             Gizmos.matrix = Matrix4x4.TRS(col.transform.position, col.transform.rotation, col.transform.lossyScale);
 
@@ -55,5 +57,37 @@ public class Visuals : CollisionTool
                     break;
             }
         }
+
+        Gizmos.color = color;
+
+        foreach (CollisionEventArgs e in collisionEvents)
+        {
+            switch (visualStyle)
+            {
+                case VisualStyle.PerCollider:
+                    DrawCollider(e.MyCollider);
+                    break;
+
+                case VisualStyle.Compound:
+                    foreach (Collider col in e.MyDetector.GetComponentsInChildren<Collider>())
+                        DrawCollider(col);
+                    break;
+
+                case VisualStyle.Mesh:
+                    foreach (MeshFilter meshFilter in e.MyDetector.GetComponentsInChildren<MeshFilter>())
+                    {
+                        if (meshFilter.sharedMesh.normals.Length > 0)
+                        {
+                            Gizmos.matrix = Matrix4x4.TRS(meshFilter.transform.position, meshFilter.transform.rotation, meshFilter.transform.lossyScale);
+                            Gizmos.DrawMesh(meshFilter.sharedMesh);
+                        }
+                    }
+                    break;
+            }
+
+            // if other doesn't have Collision Detector just draw the other collider
+            if (e.IsUniqueDetection) DrawCollider(e.OtherCollider);
+        }
+        
     }
 }
