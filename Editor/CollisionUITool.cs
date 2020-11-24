@@ -1,4 +1,11 @@
-﻿using UnityEngine;
+﻿
+/*
+ * GameObject containing models must the tagged with "AssetRoot"
+ * Multiple GameObjects can be tagged
+ * Disabled root objects, or their children (MeveaObjects), will be ignored.
+ */
+
+using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 
@@ -110,20 +117,25 @@ public class CollisionUITool : EditorWindow
 
 	private void CreateToggleContent()
 	{
-		List<GameObject> rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
-		rootGameObjects.RemoveAll(item => !item.activeInHierarchy);
-		rootObjectNames = new string[rootGameObjects.Count];
 		objectIds = new Dictionary<int, int[]>();
-
-		for (int i = 0; i < rootGameObjects.Count; ++i)
+		List<string> rootObjectNamesTemp = new List<string>();
+		int objectIdsIndex = 0;
+		foreach (GameObject go in GameObject.FindGameObjectsWithTag("AssetRoot"))
 		{
-			rootObjectNames[i] = rootGameObjects[i].name;
-			List<GameObject> childs = GetChildren(rootGameObjects[i]);
-			childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null || !item.activeInHierarchy);
-			objectIds.Add(i, new int[childs.Count]);
-			for (int j = 0; j < childs.Count; ++j)
-				objectIds[i][j] = childs[j].GetInstanceID();
+			List<GameObject> rootGameObjects = GetChildren(go);
+			rootGameObjects.RemoveAll(item => !item.activeInHierarchy);
+			for (int i = 0; i < rootGameObjects.Count; ++i)
+			{
+				rootObjectNamesTemp.Add(rootGameObjects[i].name);
+				List<GameObject> childs = GetChildren(rootGameObjects[i]);
+				childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null || !item.activeInHierarchy);
+				objectIds.Add(objectIdsIndex, new int[childs.Count]);
+				for (int j = 0; j < childs.Count; ++j)
+					objectIds[objectIdsIndex][j] = childs[j].GetInstanceID();
+				objectIdsIndex++;
+			}
 		}
+		rootObjectNames = rootObjectNamesTemp.ToArray();
 	}
 
 	private void CreateHead()
