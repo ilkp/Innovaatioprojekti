@@ -68,42 +68,39 @@ public class CollisionUITool : EditorWindow
 		}
 
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
+
+		// Create label and popup selector for root object
+		EditorGUILayout.BeginHorizontal();
+		EditorGUILayout.LabelField("Root",
+			new GUILayoutOption[]
+			{
+				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)
+			});
+
+		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames,
+			new GUILayoutOption[]
+			{
+				GUILayout.ExpandWidth(false),
+				GUILayout.MinWidth(80)
+			});
+		EditorGUILayout.EndHorizontal();
+
+		// Create toggle header and toggle all/none buttons
+		GUILayout.Space(SPACE);
+		CreateHead();
+		CreateToggleAllButtons();
+		GUILayout.Space(SPACE);
+
+		// Create toggles based on selected root object
+		verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 		{
-			// Create label and popup selector for root object
-			EditorGUILayout.BeginHorizontal();
-			{
-				EditorGUILayout.LabelField("Root",
-					new GUILayoutOption[]
-					{
-						GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)
-					});
-
-				selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames,
-					new GUILayoutOption[]
-					{
-						GUILayout.ExpandWidth(false),
-						GUILayout.MinWidth(80)
-					});
-			}
-			EditorGUILayout.EndHorizontal();
-
-			// Create toggle header and toggle all/none buttons
-			GUILayout.Space(SPACE);
-			CreateHead();
-			CreateToggleAllButtons();
-			GUILayout.Space(SPACE);
-
-			// Create toggles based on selected root object
-			verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
-			{
-				for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
-					CreateRow(objectIds[selectedRootObject][i], i);
-			}
-			EditorGUILayout.EndScrollView();
+			for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
+				CreateRow(objectIds[selectedRootObject][i]);
 		}
 		EditorGUILayout.EndScrollView();
+		EditorGUILayout.EndScrollView();
 
-		// Execute focus on game object if double clicked
+		// Execute focus on game object if component button was double clicked
 		if (executeFocus && !focusing)
 		{
 			focusing = true;
@@ -127,9 +124,7 @@ public class CollisionUITool : EditorWindow
 			childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null || !item.activeInHierarchy);
 			objectIds.Add(i, new int[childs.Count]);
 			for (int j = 0; j < childs.Count; ++j)
-			{
 				objectIds[i][j] = childs[j].GetInstanceID();
-			}
 		}
 	}
 
@@ -148,23 +143,19 @@ public class CollisionUITool : EditorWindow
 	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", componentOptions);
-
 		GUILayout.Space(SPACE);
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionDetector>(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionDetector>(false);
-
 		GUILayout.Space(TOGGLE_ALL_SPACE);
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionSoundManager>(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionSoundManager>(false);
-
 		GUILayout.Space(TOGGLE_ALL_SPACE);
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<Visuals>(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<Visuals>(false);
-
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateRow(int goId, int rowIndex)
+	private void CreateRow(int goId)
 	{
 		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId);
 		EditorGUILayout.BeginHorizontal();
@@ -172,26 +163,20 @@ public class CollisionUITool : EditorWindow
 		{
 			Selection.activeGameObject = go;
 			if (!focusing && EditorApplication.timeSinceStartup - clickTime < DOUBLE_CLICK_TIME)
-			{
 				executeFocus = true;
-			}
 			clickTime = EditorApplication.timeSinceStartup;
 		}
 		GUILayout.Space(SPACE);
-
 		CreateToggle<CollisionDetector>(go);
 		CreateToggle<CollisionSoundManager>(go);
 		CreateToggle<Visuals>(go);
-
 		EditorGUILayout.EndHorizontal();
 	}
 
 	private void CreateToggle<T>(GameObject go) where T : Behaviour
 	{
 		if (go.GetComponent<T>() != null)
-		{
 			go.GetComponent<T>().enabled = EditorGUILayout.Toggle(go.GetComponent<T>().enabled, toggleOptions);
-		}
 		else
 		{
 			GUI.enabled = false;
@@ -215,12 +200,11 @@ public class CollisionUITool : EditorWindow
 	{
 		List<GameObject> children = new List<GameObject>();
 		for (int i = 0; i < go.transform.childCount; ++i)
-		{
 			children.Add(go.transform.GetChild(i).gameObject);
-		}
 		return children;
 	}
 
+	// Unity destroys and recreates the window when play mode is activated. Therefor we need to recreate the toggle content.
 	private static void OnPlayModeChanged(PlayModeStateChange state)
 	{
 		if (state == PlayModeStateChange.EnteredPlayMode)
