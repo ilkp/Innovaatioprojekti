@@ -1,5 +1,4 @@
-﻿
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
 
@@ -29,14 +28,15 @@ public class CollisionUITool : EditorWindow
 
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
+	private bool dummyToggle = false;
+
+	private int selectedRootObject = 0;
+	private string[] rootObjectNames;
+	private Dictionary<int, int[]> objectIds;
 
 	private double clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
-	private int selectedRootObject = 0;
-	private string[] rootObjectNames;
-	private Dictionary<int, int[]> objectIds;
-	private bool dummyToggle = false;
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
@@ -45,14 +45,14 @@ public class CollisionUITool : EditorWindow
 		collisionUiTool.Show();
 	}
 
-	private void OnEnable()
-	{
-		EditorApplication.playModeStateChanged += OnPlayModeChanged;
-	}
+	private void OnEnable() { EditorApplication.playModeStateChanged += OnPlayModeChanged; }
+	private void OnDisable() { EditorApplication.playModeStateChanged -= OnPlayModeChanged; }
 
-	private void OnDisable()
+	// Unity destroys and recreates the window when play mode is activated. Therefore we need to recreate the toggle content.
+	private static void OnPlayModeChanged(PlayModeStateChange state)
 	{
-		EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+		if (state == PlayModeStateChange.EnteredPlayMode)
+			((CollisionUITool)EditorWindow.GetWindow(typeof(CollisionUITool))).CreateToggleContent();
 	}
 
 	private void Awake()
@@ -63,9 +63,7 @@ public class CollisionUITool : EditorWindow
 	private void OnGUI()
 	{
 		if (objectIds == null)
-		{
 			return;
-		}
 
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
 
@@ -202,12 +200,5 @@ public class CollisionUITool : EditorWindow
 		for (int i = 0; i < go.transform.childCount; ++i)
 			children.Add(go.transform.GetChild(i).gameObject);
 		return children;
-	}
-
-	// Unity destroys and recreates the window when play mode is activated. Therefor we need to recreate the toggle content.
-	private static void OnPlayModeChanged(PlayModeStateChange state)
-	{
-		if (state == PlayModeStateChange.EnteredPlayMode)
-			((CollisionUITool)EditorWindow.GetWindow(typeof(CollisionUITool))).CreateToggleContent();
 	}
 }
