@@ -28,23 +28,31 @@ public class CollisionUITool : EditorWindow
 		GUILayout.Width(TOGGLE_ALL_WIDTH)
 	};
 
-	private bool inPlayMode = false;
 	private double clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
-	private int selectedRootObject = 0;
-	private string[] rootObjectNames;
-	private Dictionary<int, GameObject[]> toggleObjects;
-	private Dictionary<int, bool[]> colliderToggles;
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
-	private bool dummyToggle = false;
+	public int selectedRootObject = 0;
+	public string[] rootObjectNames;
+	public Dictionary<int, int[]> objectIds;
+	public bool dummyToggle = false;
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
 	{
 		CollisionUITool collisionUiTool = (CollisionUITool)EditorWindow.GetWindow(typeof(CollisionUITool));
 		collisionUiTool.Show();
+	}
+
+	private void OnEnable()
+	{
+		EditorApplication.playModeStateChanged += OnPlayModeChanged;
+	}
+
+	private void OnDisable()
+	{
+		EditorApplication.playModeStateChanged -= OnPlayModeChanged;
 	}
 
 	private void Awake()
@@ -54,6 +62,11 @@ public class CollisionUITool : EditorWindow
 
 	private void OnGUI()
 	{
+		if (objectIds == null)
+		{
+			return;
+		}
+
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
 		{
 			// Create label and popup selector for root object
@@ -79,12 +92,11 @@ public class CollisionUITool : EditorWindow
 			CreateHead();
 			CreateToggleAllButtons();
 			GUILayout.Space(SPACE);
-
 			// Create toggle content based on selected root object
 			verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 			{
-				for (int i = 0; i < toggleObjects[selectedRootObject].Length; ++i)
-					CreateRow(toggleObjects[selectedRootObject][i], i);
+				for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
+					CreateRow(objectIds[selectedRootObject][i], i);
 			}
 			EditorGUILayout.EndScrollView();
 		}
@@ -103,18 +115,16 @@ public class CollisionUITool : EditorWindow
 	{
 		List<GameObject> rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
 		rootObjectNames = new string[rootGameObjects.Count];
-		toggleObjects = new Dictionary<int, GameObject[]>();
-		colliderToggles = new Dictionary<int, bool[]>();
+		objectIds = new Dictionary<int, int[]>();
 
 		for (int i = 0; i < rootGameObjects.Count; ++i)
 		{
 			rootObjectNames[i] = rootGameObjects[i].name;
 			List<GameObject> childs = GetChildren(rootGameObjects[i]);
 			childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
-			toggleObjects.Add(i, childs.ToArray());
-			colliderToggles.Add(i, new bool[childs.Count]);
+			objectIds.Add(i, new int[childs.Count]);
 			for (int j = 0; j < childs.Count; ++j)
-				colliderToggles[i][j] = true;
+				objectIds[i][j] = childs[j].GetInstanceID();
 		}
 	}
 
@@ -149,8 +159,9 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateRow(GameObject go, int rowIndex)
+	private void CreateRow(int goId, int rowIndex)
 	{
+		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId);
 		EditorGUILayout.BeginHorizontal();
 		if (GUILayout.Button(go.name, componentOptions))
 		{
@@ -163,40 +174,29 @@ public class CollisionUITool : EditorWindow
 		}
 		GUILayout.Space(SPACE);
 
-		EditorGUI.BeginChangeCheck();
-		colliderToggles[selectedRootObject][rowIndex] = EditorGUILayout.Toggle(colliderToggles[selectedRootObject][rowIndex], toggleOptions);
-		if (EditorGUI.EndChangeCheck())
-			ToggleGoColliders(colliderToggles[selectedRootObject][rowIndex], toggleObjects[selectedRootObject][rowIndex]);
-
+		go.GetComponent<CollisionDetector>().enabled = EditorGUILayout.Toggle(go.GetComponent<CollisionDetector>().enabled, toggleOptions);
 		dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
 		go.GetComponent<Visuals>().enabled = EditorGUILayout.Toggle(go.GetComponent<Visuals>().enabled, toggleOptions);
 
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void ToggleGoColliders(bool value, GameObject go)
-	{
-		Collider[] colliders = go.GetComponents<Collider>();
-		Collider[] childColliders = go.GetComponentsInChildren<Collider>();
-		for (int i = 0; i < colliders.Length; ++i)
-			colliders[i].enabled = value;
-		for (int i = 0; i < childColliders.Length; ++i)
-			childColliders[i].enabled = value;
-	}
-
 	private void ToggleAllColliders(bool value)
 	{
-		for (int i = 0; i < colliderToggles[selectedRootObject].Length; ++i)
+		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
-			colliderToggles[selectedRootObject][i] = value;
-			ToggleGoColliders(value, toggleObjects[selectedRootObject][i]);
+			((GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]))
+				.GetComponent<CollisionDetector>().enabled = value;
 		}
 	}
 
 	private void ToggleAllVisuals(bool value)
 	{
-		for (int i = 0; i < toggleObjects[selectedRootObject].Length; ++i)
-			toggleObjects[selectedRootObject][i].GetComponent<Visuals>().enabled = value;
+		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
+		{
+			((GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]))
+				.GetComponent<Visuals>().enabled = value;
+		}
 	}
 
 	private List<GameObject> GetChildren(GameObject go)
@@ -207,5 +207,13 @@ public class CollisionUITool : EditorWindow
 			children.Add(go.transform.GetChild(i).gameObject);
 		}
 		return children;
+	}
+
+	private static void OnPlayModeChanged(PlayModeStateChange state)
+	{
+		if (state == PlayModeStateChange.EnteredPlayMode)
+		{
+			((CollisionUITool)EditorWindow.GetWindow(typeof(CollisionUITool))).CreateToggleContent();
+		}
 	}
 }
