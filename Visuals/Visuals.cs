@@ -20,7 +20,9 @@ public class Visuals : CollisionTool
     
     void OnCollisionEvent(object sender, CollisionEventArgs e)
     {
-        if (enabled && (e.IsUniqueDetection || e.OtherCollider.GetComponentInParent<Visuals>().enabled))
+        if (e.IsUniqueDetection == false // Accept only collisions between two CollisionDetectors
+            && enabled && e.OtherCollider.GetComponentInParent<Visuals>().enabled // both Visuals are enabled
+            && e.MyDetector.enabled && e.OtherDetector.enabled) // both CollisionDetectors are enabled
         {
             StartCoroutine(VisulizeCollision(e));
         }
@@ -84,9 +86,6 @@ public class Visuals : CollisionTool
                     }
                     break;
             }
-
-            // if other doesn't have Collision Detector just draw the other collider
-            if (e.IsUniqueDetection) DrawCollider(e.OtherCollider);
         }
         
     }
