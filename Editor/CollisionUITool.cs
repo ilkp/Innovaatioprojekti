@@ -2,7 +2,6 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using System;
 
 public class CollisionUITool : EditorWindow
 {
@@ -88,12 +87,13 @@ public class CollisionUITool : EditorWindow
 			}
 			EditorGUILayout.EndHorizontal();
 
-			// Create toggle header and buttons
+			// Create toggle header and toggle all/none buttons
 			GUILayout.Space(SPACE);
 			CreateHead();
 			CreateToggleAllButtons();
 			GUILayout.Space(SPACE);
-			// Create toggle content based on selected root object
+
+			// Create toggles based on selected root object
 			verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 			{
 				for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
@@ -103,6 +103,7 @@ public class CollisionUITool : EditorWindow
 		}
 		EditorGUILayout.EndScrollView();
 
+		// Execute focus on game object if double clicked
 		if (executeFocus && !focusing)
 		{
 			focusing = true;
@@ -115,6 +116,7 @@ public class CollisionUITool : EditorWindow
 	private void CreateToggleContent()
 	{
 		List<GameObject> rootGameObjects = GetChildren(GameObject.FindGameObjectWithTag("AssetRoot"));
+		rootGameObjects.RemoveAll(item => !item.activeInHierarchy);
 		rootObjectNames = new string[rootGameObjects.Count];
 		objectIds = new Dictionary<int, int[]>();
 
@@ -122,10 +124,12 @@ public class CollisionUITool : EditorWindow
 		{
 			rootObjectNames[i] = rootGameObjects[i].name;
 			List<GameObject> childs = GetChildren(rootGameObjects[i]);
-			childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
+			childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null || !item.activeInHierarchy);
 			objectIds.Add(i, new int[childs.Count]);
 			for (int j = 0; j < childs.Count; ++j)
+			{
 				objectIds[i][j] = childs[j].GetInstanceID();
+			}
 		}
 	}
 
@@ -146,16 +150,16 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.LabelField("", componentOptions);
 
 		GUILayout.Space(SPACE);
-		if (GUILayout.Button("all", toggleAllOptions)) { ToggleAllColliders(true); }
-		if (GUILayout.Button("none", toggleAllOptions)) { ToggleAllColliders(false); }
+		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionDetector>(true);
+		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionDetector>(false);
 
 		GUILayout.Space(TOGGLE_ALL_SPACE);
-		if (GUILayout.Button("all", toggleAllOptions)) { }
-		if (GUILayout.Button("none", toggleAllOptions)) { }
+		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionSoundManager>(true);
+		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionSoundManager>(false);
 
 		GUILayout.Space(TOGGLE_ALL_SPACE);
-		if (GUILayout.Button("all", toggleAllOptions)) ToggleAllVisuals(true);
-		if (GUILayout.Button("none", toggleAllOptions)) ToggleAllVisuals(false);
+		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<Visuals>(true);
+		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<Visuals>(false);
 
 		EditorGUILayout.EndHorizontal();
 	}
@@ -175,28 +179,35 @@ public class CollisionUITool : EditorWindow
 		}
 		GUILayout.Space(SPACE);
 
-		go.GetComponent<CollisionDetector>().enabled = EditorGUILayout.Toggle(go.GetComponent<CollisionDetector>().enabled, toggleOptions);
-		dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
-		go.GetComponent<Visuals>().enabled = EditorGUILayout.Toggle(go.GetComponent<Visuals>().enabled, toggleOptions);
+		CreateToggle<CollisionDetector>(go);
+		CreateToggle<CollisionSoundManager>(go);
+		CreateToggle<Visuals>(go);
 
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void ToggleAllColliders(bool value)
+	private void CreateToggle<T>(GameObject go) where T : Behaviour
 	{
-		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
+		if (go.GetComponent<T>() != null)
 		{
-			((GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]))
-				.GetComponent<CollisionDetector>().enabled = value;
+			go.GetComponent<T>().enabled = EditorGUILayout.Toggle(go.GetComponent<T>().enabled, toggleOptions);
+		}
+		else
+		{
+			GUI.enabled = false;
+			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+			GUI.enabled = true;
 		}
 	}
 
-	private void ToggleAllVisuals(bool value)
+	private void ToggleAll<T>(bool value) where T : Behaviour
 	{
+		GameObject go;
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
-			((GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]))
-				.GetComponent<Visuals>().enabled = value;
+			go = (GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]);
+			if (go.GetComponent<T>() != null)
+				go.GetComponent<T>().enabled = value;
 		}
 	}
 
