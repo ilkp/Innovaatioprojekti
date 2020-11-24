@@ -28,15 +28,16 @@ public class CollisionUITool : EditorWindow
 		GUILayout.Width(TOGGLE_ALL_WIDTH)
 	};
 
+	private Vector2 horizontalScollView;
+	private Vector2 verticalScrollView;
+
 	private double clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
-	private Vector2 horizontalScollView;
-	private Vector2 verticalScrollView;
-	public int selectedRootObject = 0;
-	public string[] rootObjectNames;
-	public Dictionary<int, int[]> objectIds;
-	public bool dummyToggle = false;
+	private int selectedRootObject = 0;
+	private string[] rootObjectNames;
+	private Dictionary<int, int[]> objectIds;
+	private bool dummyToggle = false;
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
@@ -212,8 +213,6 @@ public class CollisionUITool : EditorWindow
 	private static void OnPlayModeChanged(PlayModeStateChange state)
 	{
 		if (state == PlayModeStateChange.EnteredPlayMode)
-		{
 			((CollisionUITool)EditorWindow.GetWindow(typeof(CollisionUITool))).CreateToggleContent();
-		}
 	}
 }
