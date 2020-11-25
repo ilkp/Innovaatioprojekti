@@ -42,17 +42,12 @@ public class CollisionUITool : EditorWindow
 		collisionUiTool.Show();
 	}
 
-	private void OnEnable() { EditorApplication.playModeStateChanged += OnPlayModeChanged; }
-	private void OnDisable() { EditorApplication.playModeStateChanged -= OnPlayModeChanged; }
-
-	// Unity destroys and recreates the window when play mode is activated. Therefore we need to recreate the toggle content.
-	private static void OnPlayModeChanged(PlayModeStateChange state)
+	private void Awake()
 	{
-		if (state == PlayModeStateChange.EnteredPlayMode)
-			((CollisionUITool)EditorWindow.GetWindow(typeof(CollisionUITool))).CreateToggleContent();
+		CreateToggleContent();
 	}
 
-	private void Awake()
+	private void OnHierarchyChange()
 	{
 		CreateToggleContent();
 	}
