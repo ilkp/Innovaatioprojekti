@@ -18,21 +18,6 @@ public class CollisionUITool : EditorWindow
 	private const int TOGGLE_ALL_SPACE = TOGGLE_WIDTH - 2 * TOGGLE_ALL_WIDTH - 4;
 	private const float DOUBLE_CLICK_TIME = 0.2f;
 
-	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[]
-	{
-		GUILayout.Width(TOGGLE_WIDTH)
-	};
-
-	private readonly GUILayoutOption[] componentOptions = new GUILayoutOption[]
-	{
-		GUILayout.Width(COMPONENT_WIDTH)
-	};
-
-	private readonly GUILayoutOption[] toggleAllOptions = new GUILayoutOption[]
-	{
-		GUILayout.Width(TOGGLE_ALL_WIDTH)
-	};
-
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
 	private bool dummyToggle = false;
@@ -44,6 +29,11 @@ public class CollisionUITool : EditorWindow
 	private double clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
+
+	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_WIDTH) };
+	private readonly GUILayoutOption[] componentOptions = new GUILayoutOption[] { GUILayout.Width(COMPONENT_WIDTH) };
+	private readonly GUILayoutOption[] toggleAllOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_ALL_WIDTH) };
+
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
 	public static void OpenTool()
@@ -185,7 +175,7 @@ public class CollisionUITool : EditorWindow
 
 	private void CreateToggle<T>(GameObject go) where T : Behaviour
 	{
-		if (go.GetComponent<T>() != null)
+		if (go.GetComponent<T>())
 			go.GetComponent<T>().enabled = EditorGUILayout.Toggle(go.GetComponent<T>().enabled, toggleOptions);
 		else
 		{
@@ -201,7 +191,7 @@ public class CollisionUITool : EditorWindow
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
 			go = (GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]);
-			if (go.GetComponent<T>() != null)
+			if (go.GetComponent<T>())
 				go.GetComponent<T>().enabled = value;
 		}
 	}
