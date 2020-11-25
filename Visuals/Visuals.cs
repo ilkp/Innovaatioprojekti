@@ -7,12 +7,16 @@ public class Visuals : CollisionTool
     public float delay = .5f;
     public Color color = new Color(1, 0, 0, 0.5f);
 
-    public enum VisualStyle { PerCollider, Compound, Mesh };
+    public enum VisualStyle { 
+        PerCollider,    // Only the collider hit is visualized
+        Compound,       // All colliders connected to the CollisionDetector are visualized
+        Mesh,           // All meshfilters/meshes connected to the CollisionDetector are visualized
+    };
     public VisualStyle visualStyle;
 
-    readonly List<CollisionEventArgs> collisionEvents = new List<CollisionEventArgs>();
+    private readonly List<CollisionEventArgs> collisionEvents = new List<CollisionEventArgs>();
 
-    Mesh primitiveSphere;
+    private Mesh primitiveSphere;
 
     private void Start()
     {
@@ -25,8 +29,8 @@ public class Visuals : CollisionTool
     void OnCollisionEvent(object sender, CollisionEventArgs e)
     {
         if (e.IsUniqueDetection == false // Accept only collisions between two CollisionDetectors
-            && enabled && e.OtherCollider.GetComponentInParent<Visuals>().enabled // both Visuals are enabled
-            && e.MyDetector.enabled && e.OtherDetector.enabled) // both CollisionDetectors are enabled
+            && e.MyDetector.enabled && e.OtherDetector.enabled // both CollisionDetectors are enabled
+            && enabled && e.OtherCollider.GetComponentInParent<Visuals>().enabled) // both Visuals are enabled
         {
             StartCoroutine(VisulizeCollision(e));
         }
@@ -39,6 +43,7 @@ public class Visuals : CollisionTool
         collisionEvents.Remove(e);
     }
 
+    // Get any of Unitys primitive meshes
     Mesh GetPrimitiveMesh(PrimitiveType type)
     {
         GameObject go = GameObject.CreatePrimitive(type);
@@ -49,12 +54,15 @@ public class Visuals : CollisionTool
 
     private void OnDrawGizmos()
     {
+        // if application is not playing no collisions can happen
         if (Application.isPlaying == false) return;
 
         void DrawCollider(Collider col)
         {
+            // Match gizmos transform with the given collider
             Gizmos.matrix = Matrix4x4.TRS(col.transform.position, col.transform.rotation, col.transform.lossyScale);
 
+            // Draw collider based on its type
             switch (col)
             {
                 case SphereCollider c:
@@ -62,7 +70,7 @@ public class Visuals : CollisionTool
                     Gizmos.DrawMesh(primitiveSphere, c.center, Quaternion.identity, c.radius * 2 * Vector3.one);
                     break;
                 case BoxCollider c:
-                    Gizmos.DrawCube(c.center, c.size * 1.01f);
+                    Gizmos.DrawCube(c.center, c.size * 1.01f); // make the size slightly bigger so it doesn't clip inside the model
                     break;
                 case MeshCollider c:
                     Gizmos.DrawMesh(c.sharedMesh);
@@ -73,8 +81,10 @@ public class Visuals : CollisionTool
             }
         }
 
+        // Set gizmos color
         Gizmos.color = color;
 
+        // Draw my side of all collision events
         foreach (CollisionEventArgs e in collisionEvents)
         {
             switch (visualStyle)
