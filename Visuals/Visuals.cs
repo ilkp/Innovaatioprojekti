@@ -12,10 +12,14 @@ public class Visuals : CollisionTool
 
     readonly List<CollisionEventArgs> collisionEvents = new List<CollisionEventArgs>();
 
+    Mesh primitiveSphere;
+
     private void Start()
     {
         CollisionDetector myCd = gameObject.GetComponent<CollisionDetector>();
         myCd.OnCollisionDetected += OnCollisionEvent;
+
+        primitiveSphere = GetPrimitiveMesh(PrimitiveType.Sphere);
     }
     
     void OnCollisionEvent(object sender, CollisionEventArgs e)
@@ -35,6 +39,14 @@ public class Visuals : CollisionTool
         collisionEvents.Remove(e);
     }
 
+    Mesh GetPrimitiveMesh(PrimitiveType type)
+    {
+        GameObject go = GameObject.CreatePrimitive(type);
+        Mesh mesh = go.GetComponent<MeshFilter>().sharedMesh;
+        Destroy(go);
+        return mesh;
+    }
+
     private void OnDrawGizmos()
     {
         if (Application.isPlaying == false) return;
@@ -46,10 +58,11 @@ public class Visuals : CollisionTool
             switch (col)
             {
                 case SphereCollider c:
-                    Gizmos.DrawSphere(c.center, c.radius);
+                    //Gizmos.DrawSphere(c.center, c.radius); // produces a low quality mesh
+                    Gizmos.DrawMesh(primitiveSphere, c.center, Quaternion.identity, c.radius * 2 * Vector3.one);
                     break;
                 case BoxCollider c:
-                    Gizmos.DrawCube(c.center, c.size);
+                    Gizmos.DrawCube(c.center, c.size * 1.01f);
                     break;
                 case MeshCollider c:
                     Gizmos.DrawMesh(c.sharedMesh);
