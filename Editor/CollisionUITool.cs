@@ -8,31 +8,45 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System;
 
 public class CollisionUITool : EditorWindow
 {
+	private class GoId
+	{
+		public int Id { get; set; }
+		public bool Active { get; set; }
+	}
+
 	private const int SPACE = 20;
-	private const int COMPONENT_WIDTH = 200;
+	private const int SPACE_MARGIN = 10;
+	private const int ACTIVE_WIDTH = 60;
+	private const int NAME_WIDTH = 200;
 	private const int TOGGLE_WIDTH = 90;
 	private const int TOGGLE_ALL_WIDTH = 40;
-	private const int TOGGLE_ALL_SPACE = TOGGLE_WIDTH - 2 * TOGGLE_ALL_WIDTH - 4;
 	private const float DOUBLE_CLICK_TIME = 0.2f;
 
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
 	private bool dummyToggle = false;
 
+	private int selectedVisualStyle = 0;
 	private int selectedRootObject = 0;
 	private string[] rootObjectNames;
-	private Dictionary<int, int[]> objectIds;
+	private string[] visualStyleNames = new string[] { "Per Collider", "Compound", "Mesh" };
+	private Dictionary<int, GoId[]> objectIds;
 
 	private double clickTime = 0f;
 	private bool executeFocus = false;
 	private bool focusing = false;
 
+	private readonly GUILayoutOption[] activeOptions = new GUILayoutOption[] { GUILayout.Width(ACTIVE_WIDTH) };
 	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_WIDTH) };
-	private readonly GUILayoutOption[] componentOptions = new GUILayoutOption[] { GUILayout.Width(COMPONENT_WIDTH) };
+	private readonly GUILayoutOption[] nameOptions = new GUILayoutOption[] { GUILayout.Width(NAME_WIDTH) };
 	private readonly GUILayoutOption[] toggleAllOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_ALL_WIDTH) };
+
+	[SerializeField] public Texture2D[] backgroundColors = new Texture2D[2];
+	GUIStyle rowStyle = new GUIStyle();
 
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
@@ -42,9 +56,18 @@ public class CollisionUITool : EditorWindow
 		collisionUiTool.Show();
 	}
 
+	private void OnEnable() { EditorApplication.playModeStateChanged += OnPlayModeStateChanged; }
+	private void OnDisable() { EditorApplication.playModeStateChanged -= OnPlayModeStateChanged; }
+	private void OnPlayModeStateChanged(PlayModeStateChange state)
+	{
+		if (state == PlayModeStateChange.EnteredEditMode || state == PlayModeStateChange.EnteredPlayMode)
+			InitBackgroundTex();
+	}
+
 	private void Awake()
 	{
 		CreateToggleContent();
+		InitBackgroundTex();
 	}
 
 	private void OnHierarchyChange()
@@ -52,27 +75,44 @@ public class CollisionUITool : EditorWindow
 		CreateToggleContent();
 	}
 
+	private void InitBackgroundTex()
+	{
+		backgroundColors = new Texture2D[2] { new Texture2D(1, 1), new Texture2D(1, 1) };
+		backgroundColors[0].SetPixel(0, 0, Color.grey * 0.05f);
+		backgroundColors[0].Apply();
+		backgroundColors[1].SetPixel(0, 0, Color.clear);
+		backgroundColors[1].Apply();
+		rowStyle.normal.background = backgroundColors[0];
+	}
+
 	private void OnGUI()
 	{
 		if (objectIds == null)
 			return;
 
+		EditorGUILayout.BeginVertical();
+		GUILayout.Space(SPACE_MARGIN);
+		EditorGUILayout.BeginHorizontal();
+		GUILayout.Space(SPACE_MARGIN);
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
 
 		// Create label and popup selector for root object
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("Root",
-			new GUILayoutOption[]
-			{
-				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)
-			});
+		EditorGUILayout.LabelField("Root", new GUILayoutOption[] {
+				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x) });
 
-		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames,
-			new GUILayoutOption[]
-			{
+		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames, new GUILayoutOption[] {
 				GUILayout.ExpandWidth(false),
-				GUILayout.MinWidth(80)
-			});
+				GUILayout.MinWidth(80) });
+
+		GUILayout.Space(SPACE);
+		EditorGUILayout.LabelField("Visual style", new GUILayoutOption[] {
+				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
+
+		selectedVisualStyle = EditorGUILayout.Popup(selectedVisualStyle, visualStyleNames, new GUILayoutOption[] {
+				GUILayout.ExpandWidth(false),
+				GUILayout.MinWidth(80) });
+
 		EditorGUILayout.EndHorizontal();
 
 		// Create toggle header and toggle all/none buttons
@@ -83,12 +123,16 @@ public class CollisionUITool : EditorWindow
 
 		// Create toggles based on selected root object
 		verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
+		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
-			for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
-				CreateRow(objectIds[selectedRootObject][i]);
+			rowStyle.normal.background = backgroundColors[i % 2];
+			CreateRow(objectIds[selectedRootObject][i].Id, i);
 		}
 		EditorGUILayout.EndScrollView();
 		EditorGUILayout.EndScrollView();
+
+		EditorGUILayout.EndHorizontal();
+		EditorGUILayout.EndVertical();
 
 		// Execute focus on game object if component button was double clicked
 		if (executeFocus && !focusing)
@@ -102,7 +146,7 @@ public class CollisionUITool : EditorWindow
 
 	private void CreateToggleContent()
 	{
-		objectIds = new Dictionary<int, int[]>();
+		objectIds = new Dictionary<int, GoId[]>();
 		List<string> rootObjectNamesTemp = new List<string>();
 		int objectIdsIndex = 0;
 		foreach (GameObject go in GameObject.FindGameObjectsWithTag("AssetRoot"))
@@ -113,10 +157,10 @@ public class CollisionUITool : EditorWindow
 			{
 				rootObjectNamesTemp.Add(rootGameObjects[i].name);
 				List<GameObject> childs = GetChildren(rootGameObjects[i]);
-				childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null || !item.activeInHierarchy);
-				objectIds.Add(objectIdsIndex, new int[childs.Count]);
+				childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
+				objectIds.Add(objectIdsIndex, new GoId[childs.Count]);
 				for (int j = 0; j < childs.Count; ++j)
-					objectIds[objectIdsIndex][j] = childs[j].GetInstanceID();
+					objectIds[objectIdsIndex][j] = new GoId { Id = childs[j].GetInstanceID(), Active = childs[j].activeInHierarchy };
 				objectIdsIndex++;
 			}
 		}
@@ -126,8 +170,8 @@ public class CollisionUITool : EditorWindow
 	private void CreateHead()
 	{
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("", componentOptions);
-		GUILayout.Space(SPACE);
+		EditorGUILayout.LabelField("Active", activeOptions);
+		EditorGUILayout.LabelField("Name", nameOptions);
 		EditorGUILayout.LabelField("Collisions", toggleOptions);
 		EditorGUILayout.LabelField("Sounds", toggleOptions);
 		EditorGUILayout.LabelField("Visualization", toggleOptions);
@@ -137,31 +181,42 @@ public class CollisionUITool : EditorWindow
 	private void CreateToggleAllButtons()
 	{
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("", componentOptions);
-		GUILayout.Space(SPACE);
+		EditorGUILayout.LabelField("", activeOptions);
+		EditorGUILayout.LabelField("", nameOptions);
+
+		EditorGUILayout.BeginHorizontal(toggleOptions);
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionDetector>(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionDetector>(false);
-		GUILayout.Space(TOGGLE_ALL_SPACE);
+		EditorGUILayout.EndHorizontal();
+
+		EditorGUILayout.BeginHorizontal(toggleOptions);
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionSoundManager>(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionSoundManager>(false);
-		GUILayout.Space(TOGGLE_ALL_SPACE);
+		EditorGUILayout.EndHorizontal();
+
+		EditorGUILayout.BeginHorizontal(toggleOptions);
 		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<Visuals>(true);
 		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<Visuals>(false);
 		EditorGUILayout.EndHorizontal();
+
+		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateRow(int goId)
+	private void CreateRow(int goId, int index)
 	{
 		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId);
-		EditorGUILayout.BeginHorizontal();
-		if (GUILayout.Button(go.name, componentOptions))
+		EditorGUILayout.BeginHorizontal(rowStyle);
+		EditorGUI.BeginChangeCheck();
+		objectIds[selectedRootObject][index].Active = EditorGUILayout.Toggle(objectIds[selectedRootObject][index].Active, activeOptions);
+		if (EditorGUI.EndChangeCheck())
+			go.SetActive(objectIds[selectedRootObject][index].Active);
+		if (GUILayout.Button(go.name, nameOptions))
 		{
 			Selection.activeGameObject = go;
 			if (!focusing && EditorApplication.timeSinceStartup - clickTime < DOUBLE_CLICK_TIME)
 				executeFocus = true;
 			clickTime = EditorApplication.timeSinceStartup;
 		}
-		GUILayout.Space(SPACE);
 		CreateToggle<CollisionDetector>(go);
 		CreateToggle<CollisionSoundManager>(go);
 		CreateToggle<Visuals>(go);
@@ -185,7 +240,7 @@ public class CollisionUITool : EditorWindow
 		GameObject go;
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
-			go = (GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i]);
+			go = (GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i].Id);
 			if (go.GetComponent<T>())
 				go.GetComponent<T>().enabled = value;
 		}
