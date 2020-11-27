@@ -48,8 +48,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
 
         void DrawCollider(Collider col)
         {
-            // Match gizmos transform with the given collider
-            Gizmos.matrix = Matrix4x4.TRS(col.transform.position, col.transform.rotation, col.transform.lossyScale);
+            Gizmos.matrix = col.transform.localToWorldMatrix;
 
             // Draw collider based on its type
             switch (col)
@@ -91,7 +90,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
                     {
                         if (meshFilter.sharedMesh.normals.Length > 0)
                         {
-                            Gizmos.matrix = Matrix4x4.TRS(meshFilter.transform.position, meshFilter.transform.rotation, meshFilter.transform.lossyScale);
+                            Gizmos.matrix = meshFilter.transform.localToWorldMatrix;
                             Gizmos.DrawMesh(meshFilter.sharedMesh);
                         }
                     }
