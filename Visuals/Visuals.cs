@@ -26,8 +26,8 @@ public class Visuals : CollisionTool
 
     IEnumerator VisulizeCollision(CollisionEventArgs e)
     {
-        VisualSingleton.Instance.AddCollisionEvent(e);
+        VisualSingleton.Instance.Add(e);
         yield return new WaitForSeconds(delay);
-        VisualSingleton.Instance.RemoveCollisionEvent(e);
+        VisualSingleton.Instance.Remove(e);
     }
 }

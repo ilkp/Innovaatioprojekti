@@ -3,50 +3,59 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class Guard<T>
+public class Guard<TKey,TValue>
 {
-    Dictionary<T, int> values;
+    private readonly Dictionary<TKey, TValue> values;
+    private readonly Dictionary<TKey, int> counts;
 
     public Guard()
     {
-        values = new Dictionary<T, int>();
+        values = new Dictionary<TKey, TValue>();
+        counts = new Dictionary<TKey, int>();
     }
 
     // returns true if creates a new entry
-    public bool Add(T value)
+    public bool Add(TKey key, TValue value)
     {
-        if (values.ContainsKey(value))
+        if (values.ContainsKey(key))
         {
-            values[value]++;
+            counts[key]++;
             return false;
         }
         else
         {
-            values.Add(value, 0);
+            values.Add(key, value);
+            counts.Add(key, 0);
             return true;
         }
     }
 
     // returns true if removes an entire entry
-    public bool Remove(T value)
+    public bool Remove(TKey key)
     {
-        if (values.ContainsKey(value))
+        if (values.ContainsKey(key))
         {
-            if (values[value] > 0)
+            if (counts[key] > 0)
             {
-                values[value]--;
+                counts[key]--;
             }
             else
             {
-                values.Remove(value);
+                values.Remove(key);
+                counts.Remove(key);
                 return true;
             }
         }
         return false;
     }
 
-    public IEnumerable<T> GetValues()
+    public IEnumerable<TValue> GetValues()
     {
-        return values.Keys;
+        return values.Values;
+    }
+
+    public int GetCount()
+    {
+        return values.Count;
     }
 }

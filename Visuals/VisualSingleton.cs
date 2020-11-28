@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,25 +12,39 @@ public enum VisualStyle
 
 public class VisualSingleton : Singleton<VisualSingleton>
 {
-    private Guard<CollisionTool.CollisionEventArgs> collisionEvents;
+    private Guard<string, CollisionTool.CollisionEventArgs> collisionEvents;
     private Mesh primitiveSphere;
 
     protected VisualSingleton() { }
 
     private void Awake()
     {
-        collisionEvents = new Guard<CollisionTool.CollisionEventArgs>();
+        collisionEvents = new Guard<string, CollisionTool.CollisionEventArgs>();
         primitiveSphere = GetPrimitiveMesh(PrimitiveType.Sphere);
     }
 
-    public void AddCollisionEvent(CollisionTool.CollisionEventArgs e)
+    public void Add(CollisionTool.CollisionEventArgs e, string tag = "")
     {
-        collisionEvents.Add(e);
+        collisionEvents.Add(tag + GetKey(e), e);
     }
 
-    public void RemoveCollisionEvent(CollisionTool.CollisionEventArgs e)
+    public void Remove(CollisionTool.CollisionEventArgs e, string tag = "")
     {
-        collisionEvents.Remove(e);
+        collisionEvents.Remove(tag + GetKey(e));
+    }
+
+    public string GetKey(CollisionTool.CollisionEventArgs e)
+    {
+        int a = e.MyCollider.GetHashCode();
+        int b = e.OtherCollider.GetHashCode();
+
+        string key;
+        if (a > b)
+            key = a + "." + b;
+        else
+            key = b + "." + a;
+
+        return key;
     }
 
     // Get any of Unitys primitive meshes

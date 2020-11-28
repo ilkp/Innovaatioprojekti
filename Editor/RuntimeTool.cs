@@ -10,6 +10,8 @@ public class RuntimeTool : EditorWindow
 	List<CollisionTool.CollisionEventArgs> collisionEvents;
 	List<bool> toggles;
 
+	bool uniquesOnly = false;
+
 	[MenuItem("Mevea/Tools/RuntimeTool")]
 	public static void Init()
 	{
@@ -30,22 +32,37 @@ public class RuntimeTool : EditorWindow
 			SubscribeToCollisionDetectors();
 		}
 
+		uniquesOnly = GUILayout.Toggle(uniquesOnly, "Uniques Only");
+		HashSet<string> uniques = new HashSet<string>();
+
 		verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 		{
-            for (int i = 0; i < collisionEvents.Count; i++)
+            for (int i = collisionEvents.Count - 1; i >= 0; i--)
             {
+				if (uniquesOnly)
+                {
+					string key = collisionEvents[i].EntryTime + VisualSingleton.Instance.GetKey(collisionEvents[i]);
+					if (uniques.Contains(key)) continue;
+					uniques.Add(key);
+				}
+
 				EditorGUILayout.BeginHorizontal();
 
 				GUILayout.Label(collisionEvents[i].EntryTime.ToString());
 				GUILayout.Label(collisionEvents[i].MyName.ToString());
 				GUILayout.Label(collisionEvents[i].OtherName.ToString());
 
-				toggles[i] = GUILayout.Toggle(toggles[i], "");
+				bool newValue = GUILayout.Toggle(toggles[i], "");
 
-				//if (toggles[i])
-				//	VisualSingleton.Instance.AddCollisionEvent(collisionEvents[i]);
-				//else
-				//	VisualSingleton.Instance.RemoveCollisionEvent(collisionEvents[i]);
+				if (toggles[i] != newValue)
+				{
+					toggles[i] = newValue;
+
+					if (newValue)
+						VisualSingleton.Instance.Add(collisionEvents[i], "RT");
+					else
+						VisualSingleton.Instance.Remove(collisionEvents[i], "RT");
+				}
 
 				EditorGUILayout.EndHorizontal();
 			}
@@ -66,6 +83,7 @@ public class RuntimeTool : EditorWindow
 		if (e.IsUniqueDetection == false // Accept only collisions between two CollisionDetectors
 			&& e.MyDetector.enabled && e.OtherDetector.enabled) // both CollisionDetectors are enabled
 		{
+			e.EntryTime = Time.time; // for some reason this doesn't work when set in CompoundCollisionHack.cs
 			collisionEvents.Add(e);
 			toggles.Add(false);
 			Repaint();
