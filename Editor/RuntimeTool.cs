@@ -48,11 +48,14 @@ public class RuntimeTool : EditorWindow
 
 				EditorGUILayout.BeginHorizontal();
 
+				bool newValue = GUILayout.Toggle(toggles[i], "");
+
+				
 				GUILayout.Label(collisionEvents[i].EntryTime.ToString());
 				GUILayout.Label(collisionEvents[i].MyName.ToString());
 				GUILayout.Label(collisionEvents[i].OtherName.ToString());
 
-				bool newValue = GUILayout.Toggle(toggles[i], "");
+				GUILayout.FlexibleSpace();
 
 				if (toggles[i] != newValue)
 				{
