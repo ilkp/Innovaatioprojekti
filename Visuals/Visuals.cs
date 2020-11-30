@@ -6,7 +6,7 @@ public class Visuals : CollisionTool
 {
     public float delay = .5f;
     public Color color = new Color(1, 0, 0, 0.5f);
-    public VisualStyle visualStyle;
+    public static VisualStyle visualStyle;
 
     private void Start()
     {

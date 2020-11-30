@@ -110,7 +110,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.LabelField("Visual style", new GUILayoutOption[] {
 			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
 
-		Visuals.visualStyle = (Visuals.VisualStyle)EditorGUILayout.EnumPopup(Visuals.visualStyle, new GUILayoutOption[] {
+		Visuals.visualStyle = (VisualStyle)EditorGUILayout.EnumPopup(Visuals.visualStyle, new GUILayoutOption[] {
 			GUILayout.ExpandWidth(false),
 			GUILayout.MinWidth(80) });
 

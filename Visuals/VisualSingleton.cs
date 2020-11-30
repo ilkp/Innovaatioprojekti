@@ -89,7 +89,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
             Visuals visuals = detector.GetComponent<Visuals>();
             Gizmos.color = visuals.color;
 
-            switch (visuals.visualStyle)
+            switch (Visuals.visualStyle)
             {
                 case VisualStyle.PerCollider:
                     DrawCollider(col);
