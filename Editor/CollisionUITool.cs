@@ -30,10 +30,8 @@ public class CollisionUITool : EditorWindow
 	private Vector2 verticalScrollView;
 	private bool dummyToggle = false;
 
-	private int selectedVisualStyle = 0;
 	private int selectedRootObject = 0;
 	private string[] rootObjectNames;
-	private string[] visualStyleNames = new string[] { "Per Collider", "Compound", "Mesh" };
 	private Dictionary<int, GoId[]> objectIds;
 
 	private double clickTime = 0f;
@@ -45,8 +43,9 @@ public class CollisionUITool : EditorWindow
 	private readonly GUILayoutOption[] nameOptions = new GUILayoutOption[] { GUILayout.Width(NAME_WIDTH) };
 	private readonly GUILayoutOption[] toggleAllOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_ALL_WIDTH) };
 
-	[SerializeField] public Texture2D[] backgroundColors = new Texture2D[2];
-	GUIStyle rowStyle = new GUIStyle();
+	private Texture2D[] rowTex;
+	private GUIStyle headerStyle;
+	private GUIStyle rowStyle;
 
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
@@ -68,6 +67,9 @@ public class CollisionUITool : EditorWindow
 	{
 		CreateToggleContent();
 		InitBackgroundTex();
+		headerStyle = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter };
+		rowStyle = new GUIStyle();
+		rowStyle.normal.background = rowTex[0];
 	}
 
 	private void OnHierarchyChange()
@@ -77,12 +79,11 @@ public class CollisionUITool : EditorWindow
 
 	private void InitBackgroundTex()
 	{
-		backgroundColors = new Texture2D[2] { new Texture2D(1, 1), new Texture2D(1, 1) };
-		backgroundColors[0].SetPixel(0, 0, Color.grey * 0.05f);
-		backgroundColors[0].Apply();
-		backgroundColors[1].SetPixel(0, 0, Color.clear);
-		backgroundColors[1].Apply();
-		rowStyle.normal.background = backgroundColors[0];
+		rowTex = new Texture2D[2] { new Texture2D(1, 1), new Texture2D(1, 1) };
+		rowTex[0].SetPixel(0, 0, Color.grey * 0.05f);
+		rowTex[0].Apply();
+		rowTex[1].SetPixel(0, 0, Color.clear);
+		rowTex[1].Apply();
 	}
 
 	private void OnGUI()
@@ -99,25 +100,25 @@ public class CollisionUITool : EditorWindow
 		// Create label and popup selector for root object
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("Root", new GUILayoutOption[] {
-				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x) });
+			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)});
 
 		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames, new GUILayoutOption[] {
-				GUILayout.ExpandWidth(false),
-				GUILayout.MinWidth(80) });
+			GUILayout.ExpandWidth(false),
+			GUILayout.MinWidth(80) });
 
 		GUILayout.Space(SPACE);
 		EditorGUILayout.LabelField("Visual style", new GUILayoutOption[] {
-				GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
+			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
 
-		selectedVisualStyle = EditorGUILayout.Popup(selectedVisualStyle, visualStyleNames, new GUILayoutOption[] {
-				GUILayout.ExpandWidth(false),
-				GUILayout.MinWidth(80) });
+		Visuals.visualStyle = (Visuals.VisualStyle)EditorGUILayout.EnumPopup(Visuals.visualStyle, new GUILayoutOption[] {
+			GUILayout.ExpandWidth(false),
+			GUILayout.MinWidth(80) });
 
 		EditorGUILayout.EndHorizontal();
 
 		// Create toggle header and toggle all/none buttons
 		GUILayout.Space(SPACE);
-		CreateHead();
+		CreateHeader();
 		CreateToggleAllButtons();
 		GUILayout.Space(SPACE);
 
@@ -125,7 +126,7 @@ public class CollisionUITool : EditorWindow
 		verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
-			rowStyle.normal.background = backgroundColors[i % 2];
+			rowStyle.normal.background = rowTex[i % 2];
 			CreateRow(objectIds[selectedRootObject][i].Id, i);
 		}
 		EditorGUILayout.EndScrollView();
@@ -167,14 +168,14 @@ public class CollisionUITool : EditorWindow
 		rootObjectNames = rootObjectNamesTemp.ToArray();
 	}
 
-	private void CreateHead()
+	private void CreateHeader()
 	{
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("Active", activeOptions);
-		EditorGUILayout.LabelField("Name", nameOptions);
-		EditorGUILayout.LabelField("Collisions", toggleOptions);
-		EditorGUILayout.LabelField("Sounds", toggleOptions);
-		EditorGUILayout.LabelField("Visualization", toggleOptions);
+		EditorGUILayout.LabelField("Active", headerStyle, activeOptions);
+		EditorGUILayout.LabelField("Name", headerStyle, nameOptions);
+		EditorGUILayout.LabelField("Collisions", headerStyle, toggleOptions);
+		EditorGUILayout.LabelField("Sounds", headerStyle, toggleOptions);
+		EditorGUILayout.LabelField("Visualization", headerStyle, toggleOptions);
 		EditorGUILayout.EndHorizontal();
 	}
 
@@ -206,10 +207,12 @@ public class CollisionUITool : EditorWindow
 	{
 		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId);
 		EditorGUILayout.BeginHorizontal(rowStyle);
+
 		EditorGUI.BeginChangeCheck();
-		objectIds[selectedRootObject][index].Active = EditorGUILayout.Toggle(objectIds[selectedRootObject][index].Active, activeOptions);
+		objectIds[selectedRootObject][index].Active = NoLabelToggle(objectIds[selectedRootObject][index].Active, activeOptions);
 		if (EditorGUI.EndChangeCheck())
 			go.SetActive(objectIds[selectedRootObject][index].Active);
+
 		if (GUILayout.Button(go.name, nameOptions))
 		{
 			Selection.activeGameObject = go;
@@ -226,13 +229,26 @@ public class CollisionUITool : EditorWindow
 	private void CreateToggle<T>(GameObject go) where T : Behaviour
 	{
 		if (go.GetComponent<T>())
-			go.GetComponent<T>().enabled = EditorGUILayout.Toggle(go.GetComponent<T>().enabled, toggleOptions);
+			go.GetComponent<T>().enabled = NoLabelToggle(go.GetComponent<T>().enabled, toggleOptions);
 		else
 		{
 			GUI.enabled = false;
-			dummyToggle = EditorGUILayout.Toggle(dummyToggle, toggleOptions);
+			dummyToggle = NoLabelToggle(dummyToggle, toggleOptions);
 			GUI.enabled = true;
 		}
+	}
+
+	private bool NoLabelToggle(bool value, GUILayoutOption[] horizontalOptions)
+	{
+		float originalLabelWidth = EditorGUIUtility.labelWidth;
+		EditorGUIUtility.labelWidth = 0.1f;
+		GUILayout.BeginHorizontal(horizontalOptions);
+		GUILayout.FlexibleSpace();
+		value = EditorGUILayout.Toggle(value);
+		GUILayout.FlexibleSpace();
+		GUILayout.EndHorizontal();
+		EditorGUIUtility.labelWidth = originalLabelWidth;
+		return value;
 	}
 
 	private void ToggleAll<T>(bool value) where T : Behaviour
