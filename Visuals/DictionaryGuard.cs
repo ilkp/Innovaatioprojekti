@@ -1,14 +1,11 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
+﻿using System.Collections.Generic;
 
-public class Guard<TKey,TValue>
+public class DictionaryGuard<TKey,TValue>
 {
     private readonly Dictionary<TKey, TValue> values;
     private readonly Dictionary<TKey, int> counts;
 
-    public Guard()
+    public DictionaryGuard()
     {
         values = new Dictionary<TKey, TValue>();
         counts = new Dictionary<TKey, int>();
