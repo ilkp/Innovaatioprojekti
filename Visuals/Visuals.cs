@@ -16,11 +16,10 @@ public class Visuals : CollisionTool
     
     void OnCollisionEvent(object sender, CollisionEventArgs e)
     {
-        if (e.IsUniqueDetection == false // Accept only collisions between two CollisionDetectors
-            && e.MyDetector.enabled && e.OtherDetector.enabled // both CollisionDetectors are enabled
-            && enabled && e.OtherCollider.GetComponentInParent<Visuals>().enabled) // both Visuals are enabled
+        if (e.MyDetector.enabled && enabled)
         {
-            StartCoroutine(VisulizeCollision(e));
+            if (e.IsUniqueDetection || (e.OtherDetector.enabled && e.OtherDetector.GetComponent<Visuals>().enabled))
+                StartCoroutine(VisulizeCollision(e));
         }
     }
 

@@ -7,19 +7,19 @@ public enum VisualStyle
 {
     PerCollider,    // Only the collider hit is visualized
     Compound,       // All colliders connected to the CollisionDetector are visualized
-    Mesh,           // All meshfilters/meshes connected to the CollisionDetector are visualized
+    Mesh,           // All meshfilters connected to the CollisionDetector are visualized
 };
 
 public class VisualSingleton : Singleton<VisualSingleton>
 {
-    private Guard<string, CollisionTool.CollisionEventArgs> collisionEvents;
+    private DictionaryGuard<string, CollisionTool.CollisionEventArgs> collisionEvents;
     private Mesh primitiveSphere;
 
     protected VisualSingleton() { }
 
     private void Awake()
     {
-        collisionEvents = new Guard<string, CollisionTool.CollisionEventArgs>();
+        collisionEvents = new DictionaryGuard<string, CollisionTool.CollisionEventArgs>();
         primitiveSphere = GetPrimitiveMesh(PrimitiveType.Sphere);
     }
 
@@ -35,8 +35,8 @@ public class VisualSingleton : Singleton<VisualSingleton>
 
     public string GetKey(CollisionTool.CollisionEventArgs e)
     {
-        int a = e.MyCollider.GetHashCode();
-        int b = e.OtherCollider.GetHashCode();
+        int a = e.MyCollider.GetInstanceID();
+        int b = e.OtherCollider.GetInstanceID();
 
         string key;
         if (a > b)
@@ -116,7 +116,11 @@ public class VisualSingleton : Singleton<VisualSingleton>
         foreach (var e in collisionEvents.GetValues())
         {
             DrawVisuals(e.MyDetector, e.MyCollider);
-            DrawVisuals(e.OtherDetector, e.OtherCollider);
+
+            if (e.IsUniqueDetection)
+                DrawCollider(e.OtherCollider);
+            else
+                DrawVisuals(e.OtherDetector, e.OtherCollider);
         }
     }
 }
