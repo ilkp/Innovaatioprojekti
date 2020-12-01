@@ -1,14 +1,11 @@
 ﻿
 /*
- * GameObject containing models must the tagged with "AssetRoot"
- * Multiple GameObjects can be tagged
- * Disabled root objects, or their children (MeveaObjects), will be ignored.
+ * Root GameObjects containing models must the tagged with "AssetRoot"
  */
 
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using System;
 
 public class CollisionUITool : EditorWindow
 {
@@ -183,6 +180,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.LabelField("Collisions", headerStyle, toggleOptions);
 		EditorGUILayout.LabelField("Sounds", headerStyle, toggleOptions);
 		EditorGUILayout.LabelField("Visualization", headerStyle, toggleOptions);
+		GUILayout.Space(SPACE);
 		EditorGUILayout.LabelField("Ignored Colliders", headerStyleIgnoredCol, ignoredColOptions);
 		EditorGUILayout.EndHorizontal();
 	}
@@ -249,10 +247,10 @@ public class CollisionUITool : EditorWindow
 
 	private void CreateColliderIgnoreArr(GoId goId)
 	{
-		SerializedObject so = goId.SerializedColDetector;
-		SerializedProperty ignoredColliders = so.FindProperty("ignoredColliders");
+		GUILayout.Space(SPACE);
+		SerializedProperty ignoredColliders = goId.SerializedColDetector.FindProperty("ignoredColliders");
 		EditorGUILayout.PropertyField(ignoredColliders, new GUIContent { text = "Size: " + ignoredColliders.arraySize }, true, ignoredColOptions);
-		so.ApplyModifiedProperties();
+		goId.SerializedColDetector.ApplyModifiedProperties();
 	}
 
 	private bool NoLabelToggle(bool value, GUILayoutOption[] horizontalOptions)
