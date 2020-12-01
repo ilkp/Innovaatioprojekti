@@ -16,6 +16,7 @@ public class CollisionUITool : EditorWindow
 	{
 		public int Id { get; set; }
 		public bool Active { get; set; }
+		public SerializedObject SerializedColDetector { get; set; }
 	}
 
 	private const int SPACE = 20;
@@ -42,9 +43,11 @@ public class CollisionUITool : EditorWindow
 	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_WIDTH) };
 	private readonly GUILayoutOption[] nameOptions = new GUILayoutOption[] { GUILayout.Width(NAME_WIDTH) };
 	private readonly GUILayoutOption[] toggleAllOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_ALL_WIDTH) };
+	private readonly GUILayoutOption[] ignoredColOptions = new GUILayoutOption[] { GUILayout.MinWidth(TOGGLE_WIDTH * 2), GUILayout.MaxWidth(TOGGLE_WIDTH * 4) };
 
 	private Texture2D[] rowTex;
 	private GUIStyle headerStyle;
+	private GUIStyle headerStyleIgnoredCol;
 	private GUIStyle rowStyle;
 
 
@@ -68,6 +71,7 @@ public class CollisionUITool : EditorWindow
 		CreateToggleContent();
 		InitBackgroundTex();
 		headerStyle = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter };
+		headerStyleIgnoredCol = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
 		rowStyle = new GUIStyle();
 		rowStyle.normal.background = rowTex[0];
 	}
@@ -97,7 +101,7 @@ public class CollisionUITool : EditorWindow
 		GUILayout.Space(SPACE_MARGIN);
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
 
-		// Create label and popup selector for root object
+		// Create selector for root object
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("Root", new GUILayoutOption[] {
 			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)});
@@ -106,6 +110,7 @@ public class CollisionUITool : EditorWindow
 			GUILayout.ExpandWidth(false),
 			GUILayout.MinWidth(80) });
 
+		// Create selector for visual style
 		GUILayout.Space(SPACE);
 		EditorGUILayout.LabelField("Visual style", new GUILayoutOption[] {
 			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
@@ -127,7 +132,7 @@ public class CollisionUITool : EditorWindow
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
 			rowStyle.normal.background = rowTex[i % 2];
-			CreateRow(objectIds[selectedRootObject][i].Id, i);
+			CreateRow(objectIds[selectedRootObject][i]);
 		}
 		EditorGUILayout.EndScrollView();
 		EditorGUILayout.EndScrollView();
@@ -149,20 +154,22 @@ public class CollisionUITool : EditorWindow
 	{
 		objectIds = new Dictionary<int, GoId[]>();
 		List<string> rootObjectNamesTemp = new List<string>();
-		int objectIdsIndex = 0;
-		foreach (GameObject go in GameObject.FindGameObjectsWithTag("AssetRoot"))
+		int rootIndex = 0;
+		foreach (GameObject assetRoot in GameObject.FindGameObjectsWithTag("AssetRoot"))
 		{
-			List<GameObject> rootGameObjects = GetChildren(go);
-			rootGameObjects.RemoveAll(item => !item.activeInHierarchy);
-			for (int i = 0; i < rootGameObjects.Count; ++i)
+			foreach (GameObject rootGo in GetChildren(assetRoot))
 			{
-				rootObjectNamesTemp.Add(rootGameObjects[i].name);
-				List<GameObject> childs = GetChildren(rootGameObjects[i]);
-				childs.RemoveAll(item => item.GetComponent<MeveaObject>() == null);
-				objectIds.Add(objectIdsIndex, new GoId[childs.Count]);
-				for (int j = 0; j < childs.Count; ++j)
-					objectIds[objectIdsIndex][j] = new GoId { Id = childs[j].GetInstanceID(), Active = childs[j].activeInHierarchy };
-				objectIdsIndex++;
+				CollisionDetector[] cds = rootGo.GetComponentsInChildren<CollisionDetector>(true);
+				if (cds.Length == 0)
+					continue;
+				rootObjectNamesTemp.Add(rootGo.name);
+				objectIds.Add(rootIndex, new GoId[cds.Length]);
+				for (int i = 0; i < cds.Length; ++i)
+				{
+					objectIds[rootIndex][i] = new GoId { Id = cds[i].gameObject.GetInstanceID(), Active = cds[i].gameObject.activeInHierarchy };
+					objectIds[rootIndex][i].SerializedColDetector = new SerializedObject(cds[i]);
+				}
+				rootIndex++;
 			}
 		}
 		rootObjectNames = rootObjectNamesTemp.ToArray();
@@ -176,6 +183,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.LabelField("Collisions", headerStyle, toggleOptions);
 		EditorGUILayout.LabelField("Sounds", headerStyle, toggleOptions);
 		EditorGUILayout.LabelField("Visualization", headerStyle, toggleOptions);
+		EditorGUILayout.LabelField("Ignored Colliders", headerStyleIgnoredCol, ignoredColOptions);
 		EditorGUILayout.EndHorizontal();
 	}
 
@@ -203,15 +211,15 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateRow(int goId, int index)
+	private void CreateRow(GoId goId)
 	{
-		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId);
+		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId.Id);
 		EditorGUILayout.BeginHorizontal(rowStyle);
 
 		EditorGUI.BeginChangeCheck();
-		objectIds[selectedRootObject][index].Active = NoLabelToggle(objectIds[selectedRootObject][index].Active, activeOptions);
+		goId.Active = NoLabelToggle(goId.Active, activeOptions);
 		if (EditorGUI.EndChangeCheck())
-			go.SetActive(objectIds[selectedRootObject][index].Active);
+			go.SetActive(goId.Active);
 
 		if (GUILayout.Button(go.name, nameOptions))
 		{
@@ -223,6 +231,7 @@ public class CollisionUITool : EditorWindow
 		CreateToggle<CollisionDetector>(go);
 		CreateToggle<CollisionSoundManager>(go);
 		CreateToggle<Visuals>(go);
+		CreateColliderIgnoreArr(goId);
 		EditorGUILayout.EndHorizontal();
 	}
 
@@ -236,6 +245,14 @@ public class CollisionUITool : EditorWindow
 			dummyToggle = NoLabelToggle(dummyToggle, toggleOptions);
 			GUI.enabled = true;
 		}
+	}
+
+	private void CreateColliderIgnoreArr(GoId goId)
+	{
+		SerializedObject so = goId.SerializedColDetector;
+		SerializedProperty ignoredColliders = so.FindProperty("ignoredColliders");
+		EditorGUILayout.PropertyField(ignoredColliders, new GUIContent { text = "Size: " + ignoredColliders.arraySize }, true, ignoredColOptions);
+		so.ApplyModifiedProperties();
 	}
 
 	private bool NoLabelToggle(bool value, GUILayoutOption[] horizontalOptions)
