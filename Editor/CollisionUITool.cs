@@ -16,12 +16,13 @@ public class CollisionUITool : EditorWindow
 		public SerializedObject SerializedColDetector { get; set; }
 	}
 
-	private const int SPACE = 20;
-	private const int SPACE_MARGIN = 10;
-	private const int ACTIVE_WIDTH = 60;
-	private const int NAME_WIDTH = 200;
-	private const int TOGGLE_WIDTH = 90;
-	private const int TOGGLE_ALL_WIDTH = 40;
+	private const float SPACE = 20;
+	private const float SPACE_MARGIN = 10;
+	private const float NAME_WIDTH = 200;
+	private const float TOGGLE_WIDTH = 85;
+	private const float TOGGLE_TOOLBAR_BUTTON_WIDTH = TOGGLE_WIDTH / 2;
+	private const float TOGGLE_TOOLBAR_LABEL_WIDTH = TOGGLE_WIDTH;
+	private const float IGNORE_COL_MIN_WIDTH = 250;
 	private const float DOUBLE_CLICK_TIME = 0.2f;
 
 	private Vector2 horizontalScollView;
@@ -36,16 +37,16 @@ public class CollisionUITool : EditorWindow
 	private bool executeFocus = false;
 	private bool focusing = false;
 
-	private readonly GUILayoutOption[] activeOptions = new GUILayoutOption[] { GUILayout.Width(ACTIVE_WIDTH) };
-	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_WIDTH) };
-	private readonly GUILayoutOption[] nameOptions = new GUILayoutOption[] { GUILayout.Width(NAME_WIDTH) };
-	private readonly GUILayoutOption[] toggleAllOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_ALL_WIDTH) };
-	private readonly GUILayoutOption[] ignoredColOptions = new GUILayoutOption[] { GUILayout.MinWidth(TOGGLE_WIDTH * 2), GUILayout.MaxWidth(TOGGLE_WIDTH * 4) };
+	private readonly GUILayoutOption[] toggleOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_WIDTH), GUILayout.ExpandWidth(false) };
+	private readonly GUILayoutOption[] toolbarLabelOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_TOOLBAR_LABEL_WIDTH), GUILayout.ExpandWidth(false) };
+	private readonly GUILayoutOption[] toolbarButtonOptions = new GUILayoutOption[] { GUILayout.Width(TOGGLE_TOOLBAR_BUTTON_WIDTH), GUILayout.ExpandWidth(false) };
+	private readonly GUILayoutOption[] nameOptions = new GUILayoutOption[] { GUILayout.Width(NAME_WIDTH), GUILayout.ExpandWidth(false) };
+	private readonly GUILayoutOption[] ignoreCollidersOptions = new GUILayoutOption[] { GUILayout.MinWidth(IGNORE_COL_MIN_WIDTH), GUILayout.ExpandWidth(true) };
 
 	private Texture2D[] rowTex;
-	private GUIStyle headerStyle;
-	private GUIStyle headerStyleIgnoredCol;
 	private GUIStyle rowStyle;
+	private GUIStyle centeredToolbarStyle;
+	private GUIStyle leftAllignToolbarStyle;
 
 
 	[MenuItem("Mevea/Tools/CollisionUITool")]
@@ -67,10 +68,10 @@ public class CollisionUITool : EditorWindow
 	{
 		CreateToggleContent();
 		InitBackgroundTex();
-		headerStyle = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter };
-		headerStyleIgnoredCol = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
 		rowStyle = new GUIStyle();
 		rowStyle.normal.background = rowTex[0];
+		centeredToolbarStyle = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleCenter };
+		leftAllignToolbarStyle = new GUIStyle(EditorStyles.miniLabel) { alignment = TextAnchor.MiddleLeft };
 	}
 
 	private void OnHierarchyChange()
@@ -120,9 +121,7 @@ public class CollisionUITool : EditorWindow
 
 		// Create toggle header and toggle all/none buttons
 		GUILayout.Space(SPACE);
-		CreateHeader();
-		CreateToggleAllButtons();
-		GUILayout.Space(SPACE);
+		CreateToolbar();
 
 		// Create toggles based on selected root object
 		verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
@@ -133,6 +132,7 @@ public class CollisionUITool : EditorWindow
 		}
 		EditorGUILayout.EndScrollView();
 		EditorGUILayout.EndScrollView();
+		GUILayout.Space(SPACE_MARGIN);
 
 		EditorGUILayout.EndHorizontal();
 		EditorGUILayout.EndVertical();
@@ -172,40 +172,46 @@ public class CollisionUITool : EditorWindow
 		rootObjectNames = rootObjectNamesTemp.ToArray();
 	}
 
-	private void CreateHeader()
+	private void CreateToolbar()
 	{
+		EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+		EditorGUILayout.LabelField("Active", centeredToolbarStyle, toggleOptions);
+		EditorGUILayout.LabelField("Name", centeredToolbarStyle, nameOptions);
+
+		EditorGUILayout.BeginVertical();
+		EditorGUILayout.LabelField("Collision Detector", leftAllignToolbarStyle, toolbarLabelOptions);
 		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("Active", headerStyle, activeOptions);
-		EditorGUILayout.LabelField("Name", headerStyle, nameOptions);
-		EditorGUILayout.LabelField("Collisions", headerStyle, toggleOptions);
-		EditorGUILayout.LabelField("Sounds", headerStyle, toggleOptions);
-		EditorGUILayout.LabelField("Visualization", headerStyle, toggleOptions);
-		GUILayout.Space(SPACE);
-		EditorGUILayout.LabelField("Ignored Colliders", headerStyleIgnoredCol, ignoredColOptions);
+		if (GUILayout.Button("on", EditorStyles.toolbarButton, toolbarButtonOptions))
+		{
+
+		}
+		if (GUILayout.Button("off", EditorStyles.toolbarButton, toolbarButtonOptions))
+		{
+
+		}
 		EditorGUILayout.EndHorizontal();
-	}
+		EditorGUILayout.EndVertical();
 
-	private void CreateToggleAllButtons()
-	{
-		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("", activeOptions);
-		EditorGUILayout.LabelField("", nameOptions);
+		EditorGUILayout.LabelField("Sound Manager", leftAllignToolbarStyle, toolbarLabelOptions);
+		if (GUILayout.Button("on", EditorStyles.toolbarButton, toolbarButtonOptions))
+		{
 
-		EditorGUILayout.BeginHorizontal(toggleOptions);
-		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionDetector>(true);
-		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionDetector>(false);
-		EditorGUILayout.EndHorizontal();
+		}
+		if (GUILayout.Button("off", EditorStyles.toolbarButton, toolbarButtonOptions))
+		{
 
-		EditorGUILayout.BeginHorizontal(toggleOptions);
-		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<CollisionSoundManager>(true);
-		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<CollisionSoundManager>(false);
-		EditorGUILayout.EndHorizontal();
+		}
 
-		EditorGUILayout.BeginHorizontal(toggleOptions);
-		if (GUILayout.Button("all", toggleAllOptions)) ToggleAll<Visuals>(true);
-		if (GUILayout.Button("none", toggleAllOptions)) ToggleAll<Visuals>(false);
-		EditorGUILayout.EndHorizontal();
+		EditorGUILayout.LabelField("Visualization", leftAllignToolbarStyle, toolbarLabelOptions);
+		if (GUILayout.Button("on", EditorStyles.toolbarButton, toolbarButtonOptions))
+		{
 
+		}
+		if (GUILayout.Button("off", EditorStyles.toolbarButton, toolbarButtonOptions))
+		{
+
+		}
+		EditorGUILayout.LabelField("Ignored Colliders", leftAllignToolbarStyle, ignoreCollidersOptions);
 		EditorGUILayout.EndHorizontal();
 	}
 
@@ -215,7 +221,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.BeginHorizontal(rowStyle);
 
 		EditorGUI.BeginChangeCheck();
-		goId.Active = NoLabelToggle(goId.Active, activeOptions);
+		goId.Active = NoLabelToggle(goId.Active);
 		if (EditorGUI.EndChangeCheck())
 			go.SetActive(goId.Active);
 
@@ -233,35 +239,39 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
+	private void OnMenu()
+	{
+		ToggleAll<CollisionDetector>(true);
+	}
+
 	private void CreateToggle<T>(GameObject go) where T : Behaviour
 	{
 		if (go.GetComponent<T>())
-			go.GetComponent<T>().enabled = NoLabelToggle(go.GetComponent<T>().enabled, toggleOptions);
+			go.GetComponent<T>().enabled = NoLabelToggle(go.GetComponent<T>().enabled);
 		else
 		{
 			GUI.enabled = false;
-			dummyToggle = NoLabelToggle(dummyToggle, toggleOptions);
+			dummyToggle = NoLabelToggle(dummyToggle);
 			GUI.enabled = true;
 		}
 	}
 
 	private void CreateColliderIgnoreArr(GoId goId)
 	{
-		GUILayout.Space(SPACE);
 		SerializedProperty ignoredColliders = goId.SerializedColDetector.FindProperty("ignoredColliders");
-		EditorGUILayout.PropertyField(ignoredColliders, new GUIContent { text = "Size: " + ignoredColliders.arraySize }, true, ignoredColOptions);
+		EditorGUILayout.PropertyField(ignoredColliders, new GUIContent { text = "Size: " + ignoredColliders.arraySize }, true, ignoreCollidersOptions);
 		goId.SerializedColDetector.ApplyModifiedProperties();
 	}
 
-	private bool NoLabelToggle(bool value, GUILayoutOption[] horizontalOptions)
+	private bool NoLabelToggle(bool value)
 	{
 		float originalLabelWidth = EditorGUIUtility.labelWidth;
 		EditorGUIUtility.labelWidth = 0.1f;
-		GUILayout.BeginHorizontal(horizontalOptions);
+		EditorGUILayout.BeginHorizontal(toggleOptions);
 		GUILayout.FlexibleSpace();
 		value = EditorGUILayout.Toggle(value);
 		GUILayout.FlexibleSpace();
-		GUILayout.EndHorizontal();
+		EditorGUILayout.EndHorizontal();
 		EditorGUIUtility.labelWidth = originalLabelWidth;
 		return value;
 	}
