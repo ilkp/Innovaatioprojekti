@@ -16,13 +16,13 @@ public class CollisionUITool : EditorWindow
 		public SerializedObject SerializedColDetector { get; set; }
 	}
 
-	private const float SPACE = 20;
-	private const float SPACE_MARGIN = 10;
-	private const float NAME_WIDTH = 200;
-	private const float TOGGLE_WIDTH = 75;
-	private const float TOGGLE_ALL_WIDTH = 30;
-	private const float COLOR_WIDTH = 75;
-	private const float SERIALIZED_PROPERTY_MIN_WIDTH = 260;
+	private const float SPACE = 20f;
+	private const float SPACE_HALF = SPACE / 2f;
+	private const float NAME_WIDTH = 200f;
+	private const float TOGGLE_WIDTH = 75f;
+	private const float TOGGLE_ALL_WIDTH = 30f;
+	private const float COLOR_WIDTH = 75f;
+	private const float SERIALIZED_PROPERTY_MIN_WIDTH = 260f;
 	private const float DOUBLE_CLICK_TIME = 0.2f;
 
 	private Vector2 horizontalScollView;
@@ -67,7 +67,7 @@ public class CollisionUITool : EditorWindow
 
 	private void Awake()
 	{
-		CreateToggleContent();
+		FindToggleContent();
 		InitBackgroundTex();
 		headerStyleCentered = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter };
 		headerStyleLeft = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
@@ -77,7 +77,7 @@ public class CollisionUITool : EditorWindow
 
 	private void OnHierarchyChange()
 	{
-		CreateToggleContent();
+		FindToggleContent();
 	}
 
 	private void InitBackgroundTex()
@@ -94,53 +94,33 @@ public class CollisionUITool : EditorWindow
 		if (objectIds == null)
 			return;
 
-		EditorGUILayout.BeginVertical();
-		GUILayout.Space(SPACE_MARGIN);
+		GUILayout.Space(SPACE_HALF);
 		EditorGUILayout.BeginHorizontal();
-		GUILayout.Space(SPACE_MARGIN);
+		GUILayout.Space(SPACE_HALF);
 		horizontalScollView = EditorGUILayout.BeginScrollView(horizontalScollView, GUI.skin.horizontalScrollbar, GUIStyle.none);
 
-		// Create selector for root object
-		EditorGUILayout.BeginHorizontal();
-		EditorGUILayout.LabelField("Root", new GUILayoutOption[] {
-			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)});
-
-		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames, new GUILayoutOption[] {
-			GUILayout.ExpandWidth(false),
-			GUILayout.MinWidth(80) });
-
-		// Create selector for visual style
+		// Header
+		CreateSelectors();
 		GUILayout.Space(SPACE);
-		EditorGUILayout.LabelField("Visual style", new GUILayoutOption[] {
-			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
-
-		Visuals.visualStyle = (VisualStyle)EditorGUILayout.EnumPopup(Visuals.visualStyle, new GUILayoutOption[] {
-			GUILayout.ExpandWidth(false),
-			GUILayout.MinWidth(80) });
-
-		EditorGUILayout.EndHorizontal();
-
-		// Create toggle header and toggle all/none buttons
-		GUILayout.Space(SPACE);
-		CreateHeader();
+		CreateLabels();
 		CreateToggleAllButtons();
-		GUILayout.Space(SPACE);
+		GUILayout.Space(SPACE_HALF);
 
-		// Create toggles based on selected root object
+		// Toggle body based on selected root object
 		verticalScrollView = EditorGUILayout.BeginScrollView(verticalScrollView, GUIStyle.none, GUI.skin.verticalScrollbar);
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
 		{
 			rowStyle.normal.background = rowTex[i % 2];
 			CreateRow(objectIds[selectedRootObject][i]);
 		}
-		EditorGUILayout.EndScrollView();
-		EditorGUILayout.EndScrollView();
-		GUILayout.Space(SPACE_MARGIN);
 
+		EditorGUILayout.EndScrollView();
+		GUILayout.Space(SPACE_HALF);
+		EditorGUILayout.EndScrollView();
+		GUILayout.Space(SPACE_HALF);
 		EditorGUILayout.EndHorizontal();
-		EditorGUILayout.EndVertical();
 
-		// Execute focus on game object if component button was double clicked
+		// Execute focus on game object if name button was double clicked
 		if (executeFocus && !focusing)
 		{
 			focusing = true;
@@ -150,7 +130,7 @@ public class CollisionUITool : EditorWindow
 		}
 	}
 
-	private void CreateToggleContent()
+	private void FindToggleContent()
 	{
 		objectIds = new Dictionary<int, GoId[]>();
 		List<string> rootObjectNamesTemp = new List<string>();
@@ -175,7 +155,27 @@ public class CollisionUITool : EditorWindow
 		rootObjectNames = rootObjectNamesTemp.ToArray();
 	}
 
-	private void CreateHeader()
+	private void CreateSelectors()
+	{
+		// Selector for root object
+		EditorGUILayout.BeginHorizontal();
+		EditorGUILayout.LabelField("Root", new GUILayoutOption[] {
+			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Root")).x)});
+		selectedRootObject = EditorGUILayout.Popup(selectedRootObject, rootObjectNames, new GUILayoutOption[] {
+			GUILayout.ExpandWidth(false),
+			GUILayout.MinWidth(80) });
+
+		// Selector for visual style
+		GUILayout.Space(SPACE);
+		EditorGUILayout.LabelField("Visual style", new GUILayoutOption[] {
+			GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent("Visual style")).x) });
+		Visuals.visualStyle = (VisualStyle)EditorGUILayout.EnumPopup(Visuals.visualStyle, new GUILayoutOption[] {
+			GUILayout.ExpandWidth(false),
+			GUILayout.MinWidth(80) });
+		EditorGUILayout.EndHorizontal();
+	}
+
+	private void CreateLabels()
 	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("Active", headerStyleCentered, toggleOptions);
