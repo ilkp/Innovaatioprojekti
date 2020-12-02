@@ -14,6 +14,7 @@ public class CollisionUITool : EditorWindow
 		public int Id { get; set; }
 		public bool Active { get; set; }
 		public SerializedObject SerializedColDetector { get; set; }
+		public SerializedProperty SerializedIgnoredColliders { get; set; }
 	}
 
 	private const float SPACE = 20f;
@@ -27,8 +28,8 @@ public class CollisionUITool : EditorWindow
 
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
-	private bool dummyToggle = false;
-	private Color dummyColor = Color.gray;
+	private readonly bool dummyToggle = false;
+	private readonly Color dummyColor = Color.gray;
 
 	private int selectedRootObject = 0;
 	private string[] rootObjectNames;
@@ -148,6 +149,8 @@ public class CollisionUITool : EditorWindow
 				{
 					objectIds[rootIndex][i] = new GoId { Id = cds[i].gameObject.GetInstanceID(), Active = cds[i].gameObject.activeInHierarchy };
 					objectIds[rootIndex][i].SerializedColDetector = new SerializedObject(cds[i]);
+					objectIds[rootIndex][i].SerializedIgnoredColliders = objectIds[rootIndex][i].SerializedColDetector.FindProperty("ignoredColliders");
+					objectIds[rootIndex][i].SerializedIgnoredColliders.isExpanded = false;
 				}
 				rootIndex++;
 			}
@@ -232,10 +235,23 @@ public class CollisionUITool : EditorWindow
 		else
 		{
 			GUI.enabled = false;
-			dummyToggle = NoLabelToggle(dummyToggle, toggleOptions);
+			NoLabelToggle(dummyToggle, toggleOptions);
 			GUI.enabled = true;
 		}
 	}
+	private bool NoLabelToggle(bool value, GUILayoutOption[] horizontalOptions)
+	{
+		float originalLabelWidth = EditorGUIUtility.labelWidth;
+		EditorGUIUtility.labelWidth = 0.1f;
+		EditorGUILayout.BeginHorizontal(horizontalOptions);
+		GUILayout.FlexibleSpace();
+		value = EditorGUILayout.Toggle(value);
+		GUILayout.FlexibleSpace();
+		EditorGUILayout.EndHorizontal();
+		EditorGUIUtility.labelWidth = originalLabelWidth;
+		return value;
+	}
+
 	private void CreateToggleAllButton<T>() where T : Behaviour
 	{
 		EditorGUILayout.BeginHorizontal(toggleOptions);
@@ -255,7 +271,7 @@ public class CollisionUITool : EditorWindow
 		else
 		{
 			GUI.enabled = false;
-			dummyColor = EditorGUILayout.ColorField(dummyColor, GUILayout.Width(COLOR_WIDTH));
+			EditorGUILayout.ColorField(dummyColor, GUILayout.Width(COLOR_WIDTH));
 			GUI.enabled = true;
 		}
 		GUILayout.FlexibleSpace();
@@ -264,22 +280,10 @@ public class CollisionUITool : EditorWindow
 
 	private void CreateColliderIgnoreArr(GoId goId)
 	{
-		SerializedProperty ignoredColliders = goId.SerializedColDetector.FindProperty("ignoredColliders");
-		EditorGUILayout.PropertyField(ignoredColliders, new GUIContent { text = "Size: " + ignoredColliders.arraySize }, true, ignoredColOptions);
+		EditorGUILayout.PropertyField(goId.SerializedIgnoredColliders,
+			new GUIContent { text = "Size: " + goId.SerializedIgnoredColliders.arraySize },
+			true, ignoredColOptions);
 		goId.SerializedColDetector.ApplyModifiedProperties();
-	}
-
-	private bool NoLabelToggle(bool value, GUILayoutOption[] horizontalOptions)
-	{
-		float originalLabelWidth = EditorGUIUtility.labelWidth;
-		EditorGUIUtility.labelWidth = 0.1f;
-		EditorGUILayout.BeginHorizontal(horizontalOptions);
-		GUILayout.FlexibleSpace();
-		value = EditorGUILayout.Toggle(value);
-		GUILayout.FlexibleSpace();
-		EditorGUILayout.EndHorizontal();
-		EditorGUIUtility.labelWidth = originalLabelWidth;
-		return value;
 	}
 
 	private void ToggleAll<T>(bool value) where T : Behaviour
