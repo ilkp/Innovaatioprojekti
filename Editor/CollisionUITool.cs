@@ -20,9 +20,9 @@ public class CollisionUITool : EditorWindow
 	private const float SPACE = 20f;
 	private const float SPACE_HALF = SPACE / 2f;
 	private const float NAME_WIDTH = 200f;
-	private const float TOGGLE_WIDTH = 75f;
+	private const float TOGGLE_WIDTH = 80;
 	private const float TOGGLE_ALL_WIDTH = 30f;
-	private const float COLOR_WIDTH = 75f;
+	private const float COLOR_WIDTH = 80;
 	private const float SERIALIZED_PROPERTY_MIN_WIDTH = 260f;
 	private const float DOUBLE_CLICK_TIME = 0.2f;
 
@@ -30,6 +30,7 @@ public class CollisionUITool : EditorWindow
 	private Vector2 verticalScrollView;
 	private readonly bool dummyToggle = false;
 	private readonly Color dummyColor = Color.gray;
+	private Color globalColor = Color.gray;
 
 	private int selectedRootObject = 0;
 	private string[] rootObjectNames;
@@ -183,8 +184,8 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("Active", headerStyleCentered, toggleOptions);
 		EditorGUILayout.LabelField("Name", headerStyleCentered, nameOptions);
-		EditorGUILayout.LabelField("Collisions", headerStyleCentered, toggleOptions);
-		EditorGUILayout.LabelField("Sounds", headerStyleCentered, toggleOptions);
+		EditorGUILayout.LabelField("Collision Det.", headerStyleCentered, toggleOptions);
+		EditorGUILayout.LabelField("Sound Man.", headerStyleCentered, toggleOptions);
 		EditorGUILayout.LabelField("Visualization", headerStyleCentered, toggleOptions);
 		EditorGUILayout.LabelField("Color", headerStyleCentered, colorOptions);
 		EditorGUILayout.LabelField("Ignored Colliders", headerStyleLeft, ignoredColOptions);
@@ -196,9 +197,18 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", toggleOptions);
 		EditorGUILayout.LabelField("", nameOptions);
+		GUILayout.Space(-4f);
 		CreateToggleAllButton<CollisionDetector>();
 		CreateToggleAllButton<CollisionSoundManager>();
 		CreateToggleAllButton<Visuals>();
+		EditorGUILayout.BeginHorizontal(colorOptions);
+		GUILayout.FlexibleSpace();
+		EditorGUI.BeginChangeCheck();
+		globalColor = EditorGUILayout.ColorField(globalColor, GUILayout.Width(COLOR_WIDTH));
+		if (EditorGUI.EndChangeCheck())
+			ChangeAllColors();
+		GUILayout.FlexibleSpace();
+		EditorGUILayout.EndHorizontal();
 		EditorGUILayout.EndHorizontal();
 	}
 
@@ -266,7 +276,7 @@ public class CollisionUITool : EditorWindow
 	{
 		EditorGUILayout.BeginHorizontal(colorOptions);
 		GUILayout.FlexibleSpace();
-		if (visuals != null)
+		if (visuals)
 			visuals.color = EditorGUILayout.ColorField(visuals.color, GUILayout.Width(COLOR_WIDTH));
 		else
 		{
@@ -294,6 +304,17 @@ public class CollisionUITool : EditorWindow
 			go = (GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i].Id);
 			if (go.GetComponent<T>())
 				go.GetComponent<T>().enabled = value;
+		}
+	}
+
+	private void ChangeAllColors()
+	{
+		GameObject go;
+		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
+		{
+			go = (GameObject)EditorUtility.InstanceIDToObject(objectIds[selectedRootObject][i].Id);
+			if (go.GetComponent<Visuals>())
+				go.GetComponent<Visuals>().color = globalColor;
 		}
 	}
 
