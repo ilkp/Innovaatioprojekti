@@ -1,6 +1,8 @@
 ﻿
 /*
  * Root GameObjects containing models must the tagged with "AssetRoot"
+ * Child GameObjects of "AssetRoot" become root object
+ * Tool searches for CollisionDetector components in root objects, each becoming a row in row content
  */
 
 using UnityEngine;
@@ -28,9 +30,9 @@ public class CollisionUITool : EditorWindow
 
 	private Vector2 horizontalScollView;
 	private Vector2 verticalScrollView;
+	private Color globalColor = Color.green;
 	private readonly bool dummyToggle = false;
 	private readonly Color dummyColor = Color.gray;
-	private Color globalColor = Color.gray;
 
 	private int selectedRootObject = 0;
 	private string[] rootObjectNames;
@@ -80,6 +82,12 @@ public class CollisionUITool : EditorWindow
 	private void OnHierarchyChange()
 	{
 		FindToggleContent();
+		/* Unoptimal, causes entire content to be receated on every hierarchy change.
+		 * May cause performance drop in a very large scene (unconfirmed)
+		 * Possible solutions:
+		 * 1. tool only knows data on currently selected root object
+		 * 2. tool keeps old data if it didn't change
+		 * 3. update button to manually update content */
 	}
 
 	private void InitBackgroundTex()
@@ -104,8 +112,8 @@ public class CollisionUITool : EditorWindow
 		// Header
 		CreateSelectors();
 		GUILayout.Space(SPACE);
-		CreateLabels();
-		CreateToggleAllButtons();
+		CreateHeaderLabels();
+		CreateHeaderControls();
 		GUILayout.Space(SPACE_HALF);
 
 		// Toggle body based on selected root object
@@ -179,7 +187,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateLabels()
+	private void CreateHeaderLabels()
 	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("Active", headerStyleCentered, toggleOptions);
@@ -192,7 +200,7 @@ public class CollisionUITool : EditorWindow
 		EditorGUILayout.EndHorizontal();
 	}
 
-	private void CreateToggleAllButtons()
+	private void CreateHeaderControls()
 	{
 		EditorGUILayout.BeginHorizontal();
 		EditorGUILayout.LabelField("", toggleOptions);
@@ -216,12 +224,12 @@ public class CollisionUITool : EditorWindow
 	{
 		GameObject go = (GameObject)EditorUtility.InstanceIDToObject(goId.Id);
 		EditorGUILayout.BeginHorizontal(rowStyle);
-
 		EditorGUI.BeginChangeCheck();
 		goId.Active = NoLabelToggle(goId.Active, toggleOptions);
 		if (EditorGUI.EndChangeCheck())
 			go.SetActive(goId.Active);
 
+		// Name button, single click selects and double click focuses on game object
 		if (GUILayout.Button(go.name, nameOptions))
 		{
 			Selection.activeGameObject = go;
@@ -266,8 +274,8 @@ public class CollisionUITool : EditorWindow
 	{
 		EditorGUILayout.BeginHorizontal(toggleOptions);
 		GUILayout.FlexibleSpace();
-		if (GUILayout.Button("on", toggleAllOptions)) ToggleAll<T>(true);
-		if (GUILayout.Button("off", toggleAllOptions)) ToggleAll<T>(false);
+		if (GUILayout.Button("on", toggleAllOptions)) EnableAll<T>(true);
+		if (GUILayout.Button("off", toggleAllOptions)) EnableAll<T>(false);
 		GUILayout.FlexibleSpace();
 		EditorGUILayout.EndHorizontal();
 	}
@@ -296,7 +304,7 @@ public class CollisionUITool : EditorWindow
 		goId.SerializedColDetector.ApplyModifiedProperties();
 	}
 
-	private void ToggleAll<T>(bool value) where T : Behaviour
+	private void EnableAll<T>(bool value) where T : Behaviour
 	{
 		GameObject go;
 		for (int i = 0; i < objectIds[selectedRootObject].Length; ++i)
