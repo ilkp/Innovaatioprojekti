@@ -13,7 +13,7 @@ public enum VisualStyle
 
 public class VisualSingleton : Singleton<VisualSingleton>
 {
-    public enum VisualMode { Gizmos, Build}
+    public enum VisualMode { Gizmos, Build }
     public VisualMode visualMode;
 
     [Space]
@@ -22,6 +22,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
     // hide created visual gameobjects from hierarchy
     public bool hideInHierarchy = true;
 
+    // Color used for collision when the other doesn't have CollisionDetector
     Color uniqueColor = new Color(0, 0, 1, 0.5f);
 
     class Visual
@@ -48,6 +49,23 @@ public class VisualSingleton : Singleton<VisualSingleton>
         primitiveCube = GetPrimitiveMesh(PrimitiveType.Cube);
     }
 
+    private void OnValidate()
+    {
+        if (Application.isPlaying)
+            UpdateVisuals();
+    }
+
+    VisualStyle lastVisualStyle;
+    private void Update()
+    {
+        // this is an after thought and should probably not be done in update
+        if (Visuals.visualStyle != lastVisualStyle)
+        {
+            lastVisualStyle = Visuals.visualStyle;
+            UpdateVisuals();
+        }
+    }
+
     public void Add(CollisionTool.CollisionEventArgs e, string tag = "")
     {
         string key = tag + GetKey(e);
@@ -56,7 +74,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
             DrawVisuals(e.MyDetector, e.MyCollider, ref visuals[key].gameObjects);
 
             if (e.IsUniqueDetection)
-                visuals[key].gameObjects.Add(CreateVisual(GetColliderMeshInfo(e.OtherCollider), e.OtherCollider.transform, uniqueColor));
+                visuals[key].gameObjects.Add(CreateVisual(GetMeshInfo(e.OtherCollider), e.OtherCollider.transform, uniqueColor));
             else
                 DrawVisuals(e.OtherDetector, e.OtherCollider, ref visuals[key].gameObjects);
         }
@@ -92,16 +110,41 @@ public class VisualSingleton : Singleton<VisualSingleton>
     Mesh GetPrimitiveMesh(PrimitiveType type)
     {
         GameObject go = GameObject.CreatePrimitive(type);
-        Mesh mesh = go.GetComponent<MeshFilter>().mesh;
+        Mesh mesh = Instantiate(go.GetComponent<MeshFilter>().mesh);
         Destroy(go);
         return mesh;
+    }
+
+    void UpdateVisuals()
+    {
+        if (visuals == null) return;
+
+        foreach (Visual visual in visuals.GetValues())
+        {
+            for (int i = 0; i < visual.gameObjects.Count; i++)
+            {
+                Destroy(visual.gameObjects[i]);
+            }
+
+            visual.gameObjects = new List<GameObject>();
+
+            if (visualMode == VisualMode.Build)
+            {
+                DrawVisuals(visual.collisionEvent.MyDetector, visual.collisionEvent.MyCollider, ref visual.gameObjects);
+
+                if (visual.collisionEvent.IsUniqueDetection)
+                    visual.gameObjects.Add(CreateVisual(GetMeshInfo(visual.collisionEvent.OtherCollider), visual.collisionEvent.OtherCollider.transform, uniqueColor));
+                else
+                    DrawVisuals(visual.collisionEvent.OtherDetector, visual.collisionEvent.OtherCollider, ref visual.gameObjects);
+            }
+        }
     }
 
     GameObject CreateVisual(MeshInfo meshInfo, Transform parent, Color color)
     {
         GameObject go = new GameObject("Visual");
 
-        if (hideInHierarchy)        
+        if (hideInHierarchy && Application.isPlaying)        
             go.hideFlags = HideFlags.HideInHierarchy;
 
         go.transform.parent = parent;
@@ -129,7 +172,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
-    MeshInfo GetColliderMeshInfo(Collider col)
+    MeshInfo GetMeshInfo(Collider col)
     {
         MeshInfo meshInfo = new MeshInfo();
 
@@ -165,13 +208,13 @@ public class VisualSingleton : Singleton<VisualSingleton>
         switch (Visuals.visualStyle)
         {
             case VisualStyle.PerCollider:
-                gameObjects.Add(CreateVisual(GetColliderMeshInfo(col), col.transform, color));
+                gameObjects.Add(CreateVisual(GetMeshInfo(col), col.transform, color));
                 break;
 
             case VisualStyle.Compound:
                 foreach (Collider c in detector.GetComponentsInChildren<Collider>())
                 {
-                    gameObjects.Add(CreateVisual(GetColliderMeshInfo(c), c.transform, color));
+                    gameObjects.Add(CreateVisual(GetMeshInfo(c), c.transform, color));
                 }
                 break;
 
@@ -201,7 +244,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         {
             Gizmos.matrix = col.transform.localToWorldMatrix;
 
-            MeshInfo meshInfo = GetColliderMeshInfo(col);
+            MeshInfo meshInfo = GetMeshInfo(col);
             Gizmos.DrawMesh(meshInfo.mesh, meshInfo.position, Quaternion.identity, meshInfo.scale);
         }
 
