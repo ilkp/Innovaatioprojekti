@@ -180,7 +180,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
                 {
                     if (meshFilter.sharedMesh.normals.Length > 0)
                     {
-                        Mesh mesh = meshFilter.mesh;
+                        Mesh mesh = Instantiate(meshFilter.mesh);
                         mesh.SetTriangles(mesh.triangles, 0);
                         mesh.subMeshCount = 1;
                         gameObjects.Add(CreateVisual(new MeshInfo(mesh, Vector3.zero, Vector3.one), meshFilter.transform, color));
@@ -227,7 +227,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
                         {
                             Gizmos.matrix = meshFilter.transform.localToWorldMatrix;
 
-                            Mesh mesh = meshFilter.mesh;
+                            Mesh mesh = Instantiate(meshFilter.mesh);
                             mesh.SetTriangles(mesh.triangles, 0);
                             mesh.subMeshCount = 1;
                             Gizmos.DrawMesh(mesh);
