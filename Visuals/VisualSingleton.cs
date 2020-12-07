@@ -17,7 +17,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
     public VisualMode visualMode;
 
     [Space]
-    public Material highlight;
+    public Material visualMaterial;
     
     // hide created visual gameobjects from hierarchy
     public bool hideInHierarchy = true;
@@ -153,7 +153,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         go.transform.localRotation = Quaternion.identity;
 
         go.AddComponent<MeshFilter>().mesh = meshInfo.mesh;
-        go.AddComponent<MeshRenderer>().material = new Material(highlight) { color = color };
+        go.AddComponent<MeshRenderer>().material = new Material(visualMaterial) { color = color };
 
         return go;
     }
@@ -284,10 +284,13 @@ public class VisualSingleton : Singleton<VisualSingleton>
         {
             DrawVisualsGizmos(e.collisionEvent.MyDetector, e.collisionEvent.MyCollider);
 
-            if (e.collisionEvent.IsUniqueDetection)
-                DrawCollider(e.collisionEvent.OtherCollider);
-            else
+            if (e.collisionEvent.IsUniqueDetection == false)
                 DrawVisualsGizmos(e.collisionEvent.OtherDetector, e.collisionEvent.OtherCollider);
+            else
+            {
+                Gizmos.color = uniqueColor;
+                DrawCollider(e.collisionEvent.OtherCollider);
+            }
         }
     }
 }
