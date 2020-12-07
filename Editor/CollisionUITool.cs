@@ -61,24 +61,6 @@ public class CollisionUITool : EditorWindow
 		collisionUiTool.Show();
 	}
 
-	private void OnEnable() { EditorApplication.playModeStateChanged += OnPlayModeStateChanged; }
-	private void OnDisable() { EditorApplication.playModeStateChanged -= OnPlayModeStateChanged; }
-	private void OnPlayModeStateChanged(PlayModeStateChange state)
-	{
-		if (state == PlayModeStateChange.EnteredEditMode || state == PlayModeStateChange.EnteredPlayMode)
-			InitBackgroundTex();
-	}
-
-	private void Awake()
-	{
-		FindToggleContent();
-		InitBackgroundTex();
-		headerStyleCentered = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter };
-		headerStyleLeft = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
-		rowStyle = new GUIStyle();
-		rowStyle.normal.background = rowTex[0];
-	}
-
 	private void OnHierarchyChange()
 	{
 		FindToggleContent();
@@ -90,19 +72,13 @@ public class CollisionUITool : EditorWindow
 		 * 3. update button to manually update content */
 	}
 
-	private void InitBackgroundTex()
-	{
-		rowTex = new Texture2D[2] { new Texture2D(1, 1), new Texture2D(1, 1) };
-		rowTex[0].SetPixel(0, 0, Color.grey * 0.05f);
-		rowTex[0].Apply();
-		rowTex[1].SetPixel(0, 0, Color.clear);
-		rowTex[1].Apply();
-	}
-
 	private void OnGUI()
 	{
 		if (objectIds == null)
-			return;
+			FindToggleContent();
+
+		if (headerStyleCentered == null || headerStyleLeft == null || rowStyle == null || rowTex == null || rowTex[0] == null || rowTex[1] == null)
+			InitializeStyles();
 
 		GUILayout.Space(SPACE_HALF);
 		EditorGUILayout.BeginHorizontal();
@@ -165,6 +141,19 @@ public class CollisionUITool : EditorWindow
 			}
 		}
 		rootObjectNames = rootObjectNamesTemp.ToArray();
+	}
+
+	private void InitializeStyles()
+	{
+		rowTex = new Texture2D[2] { new Texture2D(1, 1), new Texture2D(1, 1) };
+		rowTex[0].SetPixel(0, 0, Color.grey * 0.05f);
+		rowTex[0].Apply();
+		rowTex[1].SetPixel(0, 0, Color.clear);
+		rowTex[1].Apply();
+		headerStyleCentered = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleCenter };
+		headerStyleLeft = new GUIStyle(EditorStyles.label) { alignment = TextAnchor.MiddleLeft };
+		rowStyle = new GUIStyle();
+		rowStyle.normal.background = rowTex[0];
 	}
 
 	private void CreateSelectors()
