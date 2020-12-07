@@ -1,8 +1,12 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
+
+/*
+ VisualSingleton is used to visulalize collisions either by using Gizmos or by creating new GameObjects to imitate Gizmos in build mode.
+
+ There are two public methods (Add and Remove) used to add and remove CollisionEventArgs to be visualized.
+ */
 
 public enum VisualStyle
 {
@@ -17,6 +21,8 @@ public class VisualSingleton : Singleton<VisualSingleton>
     public VisualMode visualMode;
 
     [Space]
+    
+    // material used for visuals in build mode
     public Material visualMaterial;
     
     // hide created visual gameobjects from hierarchy
@@ -37,7 +43,10 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // Custom dictionary to keep track of collision events and gameobjects related to them in build mode visualization
     private DictionaryGuard<string, Visual> visuals;
+
+    // primitive meshes used when visulizing Spheres or Cubes
     private Mesh primitiveSphere, primitiveCube;
 
     protected VisualSingleton() { }
@@ -45,12 +54,15 @@ public class VisualSingleton : Singleton<VisualSingleton>
     private void Awake()
     {
         visuals = new DictionaryGuard<string, Visual>();
+
+        // primitive meshes are generated here so they can be used freely later
         primitiveSphere = GetPrimitiveMesh(PrimitiveType.Sphere);
         primitiveCube = GetPrimitiveMesh(PrimitiveType.Cube);
     }
 
     private void OnValidate()
     {
+        // Visuals are updated in case inspector settings for this component change in playmode.
         if (Application.isPlaying)
             UpdateVisuals();
     }
@@ -59,6 +71,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
     private void Update()
     {
         // this is an after thought and should probably not be done in update
+        // in case visualStyle is changes by CollisionUITool.
         if (Visuals.visualStyle != lastVisualStyle)
         {
             lastVisualStyle = Visuals.visualStyle;
@@ -66,6 +79,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // add a collision event to be drawn, tag is optional used to differentiate between different sources
     public void Add(CollisionTool.CollisionEventArgs e, string tag = "")
     {
         string key = tag + GetKey(e);
@@ -80,6 +94,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // remove a collision event (requires the same input as the Add method)
     public void Remove(CollisionTool.CollisionEventArgs e, string tag = "")
     {
         Visual visual = visuals.Remove(tag + GetKey(e));
@@ -92,6 +107,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // generates a string key for collisionevent, collisions between same two objects always return the same key.
     public string GetKey(CollisionTool.CollisionEventArgs e)
     {
         int a = e.MyCollider.GetInstanceID();
@@ -115,6 +131,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         return mesh;
     }
 
+    // ReVisualize existing visuals eg. when settings change
     void UpdateVisuals()
     {
         if (visuals == null) return;
@@ -140,6 +157,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // Create visual GameObject with visualMaterial of given color and meshinfo
     GameObject CreateVisual(MeshInfo meshInfo, Transform parent, Color color)
     {
         GameObject go = new GameObject("Visual");
@@ -172,6 +190,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // Try to get colliders mesh including its position and scale
     MeshInfo GetMeshInfo(Collider col)
     {
         MeshInfo meshInfo = new MeshInfo();
@@ -201,6 +220,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         return meshInfo;
     }
 
+    // Create visuals depending on selected visual style
     void DrawVisuals(CollisionDetector detector, Collider col, ref List<GameObject> gameObjects)
     {
         Color color = detector.GetComponent<Visuals>().color;
@@ -233,6 +253,7 @@ public class VisualSingleton : Singleton<VisualSingleton>
         }
     }
 
+    // same with gizmos
     private void OnDrawGizmos()
     {
         if (visualMode != VisualMode.Gizmos) return;

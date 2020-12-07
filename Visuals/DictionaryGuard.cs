@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 
+/*
+ Dictionary which keeps track of how many duplicate keys are added and only removes them if all refrences are removed.
+ */
 public class DictionaryGuard<TKey,TValue>
 {
     private readonly Dictionary<TKey, TValue> values;
