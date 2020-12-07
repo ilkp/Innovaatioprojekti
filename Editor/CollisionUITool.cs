@@ -64,7 +64,8 @@ public class CollisionUITool : EditorWindow
 	private void OnHierarchyChange()
 	{
 		FindToggleContent();
-		/* Unoptimal, causes entire content to be receated on every hierarchy change.
+		/* Unoptimal solution for automatically refreshing the tool
+		 * Causes entire content to be receated on every hierarchy change.
 		 * May cause performance drop in a very large scene (unconfirmed)
 		 * Possible solutions:
 		 * 1. tool only knows data on currently selected root object
