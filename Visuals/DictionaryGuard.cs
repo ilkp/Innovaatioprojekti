@@ -28,7 +28,7 @@ public class DictionaryGuard<TKey,TValue>
     }
 
     // returns true if removes an entire entry
-    public bool Remove(TKey key)
+    public TValue Remove(TKey key)
     {
         if (values.ContainsKey(key))
         {
@@ -38,12 +38,13 @@ public class DictionaryGuard<TKey,TValue>
             }
             else
             {
+                TValue value = values[key];
                 values.Remove(key);
                 counts.Remove(key);
-                return true;
+                return value;
             }
         }
-        return false;
+        return default;
     }
 
     public IEnumerable<TValue> GetValues()
@@ -54,5 +55,11 @@ public class DictionaryGuard<TKey,TValue>
     public int GetCount()
     {
         return values.Count;
+    }
+
+    public TValue this[TKey key]
+    {
+        get => values[key];
+        set => values[key] = value;
     }
 }
